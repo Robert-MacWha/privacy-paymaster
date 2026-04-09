@@ -10,19 +10,21 @@ import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
-import {TornadoAccount} from "../src/TornadoAccount.sol";
-import {TornadoPaymaster} from "../src/TornadoPaymaster.sol";
+import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
+import {BasePrivacyAccount} from "../src/accounts/BasePrivacyAccount.sol";
+import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
+import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
 import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 import {RevertingReceiver} from "./helpers/RevertingReceiver.sol";
 
-contract TornadoPaymasterForkTest is Test {
+contract PrivacyPaymasterForkTest is Test {
     // ----- State -----
     IEntryPoint internal entryPoint;
     ITornadoInstance internal tornado;
     TornadoAccount internal account;
-    TornadoPaymaster internal paymaster;
+    PrivacyPaymaster internal paymaster;
     uint256 internal denomination;
 
     // paymasterAndData gas-limit fields. These are sized generously and
@@ -55,18 +57,23 @@ contract TornadoPaymasterForkTest is Test {
         //? or deployer nonce. This means setUp no longer exercises
         //? Deploy.s.sol; the script is instead smoke-tested separately.
         deployCodeTo(
-            "TornadoPaymaster.sol:TornadoPaymaster",
+            "PrivacyPaymaster.sol:PrivacyPaymaster",
             abi.encode(
                 entryPoint,
                 TornadoFixtures.PAYMASTER_OWNER,
-                tornado,
-                account
+                address(0),
+                address(0),
+                uint32(0)
             ),
             TornadoFixtures.PAYMASTER_EXPECTED
         );
-        paymaster = TornadoPaymaster(
+        paymaster = PrivacyPaymaster(
             payable(TornadoFixtures.PAYMASTER_EXPECTED)
         );
+
+        // Whitelist the account.
+        vm.prank(TornadoFixtures.PAYMASTER_OWNER);
+        paymaster.setApprovedSender(address(account), true);
 
         // Fund paymaster's EntryPoint deposit (not stake — stake is only
         // enforced in the alt-mempool simulation path, not handleOps).
@@ -93,10 +100,13 @@ contract TornadoPaymasterForkTest is Test {
         op.sender = address(account);
         op.nonce = entryPoint.getNonce(address(account), 0);
         op.initCode = "";
-        op.callData = abi.encodeCall(
-            TornadoAccount.withdraw,
-            (proof, root, nullifier, payable(recipient), refund)
+
+        bytes memory unshieldCalldata = abi.encodeCall(
+            ITornadoInstance.withdraw,
+            (proof, root, nullifier, payable(recipient), payable(address(0)), 0, refund)
         );
+        IPrivacyAccount.Call[] memory tail = new IPrivacyAccount.Call[](0);
+        op.callData = abi.encodeCall(IPrivacyAccount.execute, (unshieldCalldata, tail));
 
         // accountGasLimits = verificationGasLimit(16) || callGasLimit(16)
         uint128 verificationGasLimit = 500_000;
@@ -114,11 +124,9 @@ contract TornadoPaymasterForkTest is Test {
             (uint256(maxPriorityFeePerGas) << 128) | uint256(maxFeePerGas)
         );
 
-        op.paymasterAndData = abi.encodePacked(
-            address(paymaster),
-            PM_VERIFICATION_GAS,
-            PM_POST_OP_GAS,
-            destination
+        op.paymasterAndData = bytes.concat(
+            abi.encodePacked(address(paymaster), PM_VERIFICATION_GAS, PM_POST_OP_GAS),
+            abi.encode(destination)
         );
         op.signature = "";
     }
@@ -222,7 +230,9 @@ contract TornadoPaymasterForkTest is Test {
         );
         op.sender = address(0xBAD);
 
-        vm.expectRevert(TornadoPaymaster.InvalidSender.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrivacyPaymaster.SenderNotApproved.selector, address(0xBAD))
+        );
         _callValidate(op);
     }
 
@@ -244,7 +254,7 @@ contract TornadoPaymasterForkTest is Test {
         cd[3] = 0xef;
         op.callData = cd;
 
-        vm.expectRevert(TornadoPaymaster.InvalidSelector.selector);
+        vm.expectRevert(PrivacyPaymaster.InvalidSelector.selector);
         _callValidate(op);
     }
 
@@ -262,7 +272,7 @@ contract TornadoPaymasterForkTest is Test {
             address(paymaster),
             0
         );
-        vm.expectRevert(TornadoPaymaster.InvalidProof.selector);
+        vm.expectRevert(TornadoAccount.InvalidProof.selector);
         _callValidate(op);
     }
 
@@ -275,7 +285,7 @@ contract TornadoPaymasterForkTest is Test {
             1 // non-zero refund
         );
 
-        vm.expectRevert(TornadoPaymaster.NonZeroRefund.selector);
+        vm.expectRevert(TornadoAccount.NonZeroRefund.selector);
         _callValidate(op);
     }
 
@@ -300,12 +310,7 @@ contract TornadoPaymasterForkTest is Test {
             0
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                TornadoPaymaster.NullifierAlreadySpent.selector,
-                TornadoFixtures.NULLIFIER_HASH
-            )
-        );
+        vm.expectRevert(TornadoAccount.NullifierAlreadySpent.selector);
         _callValidate(op);
     }
 
@@ -319,12 +324,7 @@ contract TornadoPaymasterForkTest is Test {
             0
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                TornadoPaymaster.UnknownRoot.selector,
-                badRoot
-            )
-        );
+        vm.expectRevert(TornadoAccount.UnknownRoot.selector);
         _callValidate(op);
     }
 
@@ -341,7 +341,7 @@ contract TornadoPaymasterForkTest is Test {
             0
         );
 
-        vm.expectRevert(TornadoPaymaster.InvalidProof.selector);
+        vm.expectRevert(TornadoAccount.InvalidProof.selector);
         _callValidate(op);
     }
 
@@ -422,7 +422,7 @@ contract TornadoPaymasterForkTest is Test {
             address(paymaster),
             0
         );
-        vm.expectRevert(TornadoAccount.CallerNotEntryPoint.selector);
+        vm.expectRevert(BasePrivacyAccount.CallerNotEntryPoint.selector);
         account.validateUserOp(op, bytes32(0), 0);
     }
 

@@ -3,11 +3,11 @@ pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {TornadoPaymaster} from "../src/TornadoPaymaster.sol";
+import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
 
-/// @notice Post-deploy wiring for a live TornadoPaymaster: add stake and
-/// fund the EntryPoint deposit. Separated from `Deploy.s.sol` so the test
-/// suite (which needs neither) isn't forced through these state changes,
+/// @notice Post-deploy wiring for a live PrivacyPaymaster: add stake and
+/// fund the EntryPoint deposit. Separated from `DeployPrivacy.s.sol` so the
+/// test suite (which needs neither) isn't forced through these state changes,
 /// and so that re-funding can happen independently of redeploying.
 ///
 /// Broadcasted by the paymaster owner (must match `PAYMASTER_OWNER` used at
@@ -30,7 +30,7 @@ contract SetupPaymaster is Script {
         uint256 depositAmount = vm.envUint("DEPOSIT_AMOUNT");
         uint256 ownerPk = vm.envUint("OWNER_PK");
 
-        TornadoPaymaster paymaster = TornadoPaymaster(payable(paymasterAddr));
+        PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
         IEntryPoint entryPoint = IEntryPoint(entryPointAddr);
 
         vm.startBroadcast(ownerPk);
