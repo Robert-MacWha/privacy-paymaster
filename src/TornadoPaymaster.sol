@@ -17,20 +17,6 @@ import {ITornadoInstance} from "./interfaces/ITornadoInstance.sol";
 import {IVerifier} from "./interfaces/IVerifier.sol";
 import {TornadoAccount} from "./TornadoAccount.sol";
 
-/// Custom paymaster / account contract that can be used to withdraw funds from a
-/// tornadocash pool.
-///
-/// The user flow is as follows:
-/// 1. User generates withdrawal proof off-chain.
-/// 2. User creates a UserOperation calling `withdraw` on this contract.
-/// 3. EntryPoint calls `validate*` on this contract which validates the proof and
-///    params against tornado's state.
-/// 4. If valid, the EntryPoint calls `TornadoAccount.withdraw` which executes the
-///    tornado withdrawal with this paymaster as the recipient, causing the
-///    denomination to land in this contract.
-/// 5. After withdrawal, the entryPoint calls `postOp` on this contract which deducts
-///    the fee from the withdrawn amount and forwards the rest to the user's desired
-///    destination.
 contract TornadoPaymaster is BasePaymaster {
     // ----- ERRORS -----
     error InvalidSelector();
@@ -40,12 +26,16 @@ contract TornadoPaymaster is BasePaymaster {
     error NullifierAlreadySpent(bytes32 nullifierHash);
     error UnknownRoot(bytes32 root);
     error InvalidProof();
-    error ForwardFailed();
 
     // ----- CONSTANTS -----
     ITornadoInstance public immutable TORNADO_INSTANCE;
     TornadoAccount public immutable TORNADO_ACCOUNT;
-    uint256 public constant POST_OP_GAS_OVERHEAD = 10_000;
+    // gas overhead to cover postOp execution after the final transfer. Best-effort
+    // estimation to prevent griefing while minimizing overpayment by users.
+    uint256 public constant POST_OP_GAS_OVERHEAD = 1e5;
+    // budget for final call to recipient in postOp. We want to forward as much
+    // as possible, but also must place a hard cap to prevent griefing.
+    uint256 public constant FORWARD_GAS_BUDGET = 1e4;
     uint256 private constant PAYMASTER_AND_DATA_OFFSET = 20 + 16 + 16; // paymaster(20) || verificationGasLimit(16) || postOpGasLimit(16)
 
     // ----- CONSTRUCTOR -----
@@ -59,6 +49,14 @@ contract TornadoPaymaster is BasePaymaster {
         TORNADO_ACCOUNT = _tornadoAccount;
     }
 
+    receive() external payable {}
+
+    // aderyn-ignore-next-line(centralization-risk)
+    function sweep(address payable to) external onlyOwner {
+        (bool ok, ) = to.call{value: address(this).balance}("");
+        require(ok, "sweep failed");
+    }
+
     // ----- BasePaymaster -----
     function _validatePaymasterUserOp(
         PackedUserOperation calldata userOp,
@@ -70,9 +68,12 @@ contract TornadoPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        if (userOp.sender != address(TORNADO_ACCOUNT)) revert InvalidSender();
-        if (bytes4(userOp.callData[:4]) != TornadoAccount.withdraw.selector)
-            revert InvalidSelector();
+        bool senderIsValid = userOp.sender == address(TORNADO_ACCOUNT);
+        if (!senderIsValid) revert InvalidSender();
+
+        bool isWithdraw = bytes4(userOp.callData[:4]) ==
+            TornadoAccount.withdraw.selector;
+        if (!isWithdraw) revert InvalidSelector();
 
         (
             bytes memory proof,
@@ -84,6 +85,7 @@ contract TornadoPaymaster is BasePaymaster {
                 userOp.callData[4:],
                 (bytes, bytes32, bytes32, address, uint256)
             );
+
         if (recipient != address(this)) revert InvalidRecipient();
         _verifyWithdrawal(proof, root, nullifierHash, refund);
 
@@ -96,17 +98,11 @@ contract TornadoPaymaster is BasePaymaster {
     }
 
     function _postOp(
-        IPaymaster.PostOpMode mode,
+        IPaymaster.PostOpMode,
         bytes calldata context,
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas
     ) internal override {
-        //? If the first postOp call reverted (e.g. the destination rejected the
-        //? forward), EntryPoint retries with `postOpReverted`. We intentionally
-        //? early-return here so the full denomination stays in this contract.
-        //? This is the anti-grief invariant.
-        if (mode == IPaymaster.PostOpMode.postOpReverted) return;
-
         // context is exactly the 20-byte destination slice written in validation
         // forge-lint: disable-next-line(unsafe-typecast)
         address payable destination = payable(address(bytes20(context)));
@@ -117,8 +113,12 @@ contract TornadoPaymaster is BasePaymaster {
         if (fee > denomination) fee = denomination; // safety cap
 
         uint256 remainder = denomination - fee;
-        (bool ok, ) = destination.call{value: remainder}("");
-        if (!ok) revert ForwardFailed();
+
+        //? Best-effort forward. If the destination rejects, we MUST NOT
+        //? revert. Reverting here would roll back the withdrawal, but the
+        //? EntryPoint would still charge us for the gas, enabling griefing attacks.
+        // aderyn-ignore-next-line(unchecked-low-level-call)
+        destination.call{value: remainder, gas: FORWARD_GAS_BUDGET}("");
     }
 
     // ----- Internals -----
@@ -128,28 +128,33 @@ contract TornadoPaymaster is BasePaymaster {
         bytes32 nullifierHash,
         uint256 refund
     ) internal {
-        //? Eth-specific requirement — cheap check first
+        // Eth-specific requirement
         if (refund != 0) revert NonZeroRefund();
 
-        // Validate the withdrawal params against tornado state
         if (TORNADO_INSTANCE.nullifierHashes(nullifierHash))
             revert NullifierAlreadySpent(nullifierHash);
         if (!TORNADO_INSTANCE.isKnownRoot(root)) revert UnknownRoot(root);
 
         IVerifier verifier = IVerifier(TORNADO_INSTANCE.verifier());
-        bool valid = verifier.verifyProof(
-            proof,
-            [
-                uint256(root),
-                uint256(nullifierHash),
-                uint256(uint160(address(this))), // recipient
-                uint256(0), // relayer
-                uint256(0), // fee
-                uint256(0) // refund
-            ]
-        );
-        if (!valid) revert InvalidProof();
-    }
 
-    receive() external payable {}
+        //? The verifier can revert on malformed proofs. Catch and revert with
+        //? standard error.
+        try
+            verifier.verifyProof(
+                proof,
+                [
+                    uint256(root),
+                    uint256(nullifierHash),
+                    uint256(uint160(address(this))), // recipient
+                    uint256(0), // relayer
+                    uint256(0), // fee
+                    uint256(0) // refund
+                ]
+            )
+        returns (bool valid) {
+            if (!valid) revert InvalidProof();
+        } catch {
+            revert InvalidProof();
+        }
+    }
 }
