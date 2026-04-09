@@ -248,18 +248,21 @@ contract TornadoPaymasterForkTest is Test {
         _callValidate(op);
     }
 
-    function test_validation_wrongRecipient() public {
-        // callData encodes OTHER_RECIPIENT - fails at recipient check before
-        // any proof verification is attempted, so reusing PROOF_OTHER is fine.
+    function test_validation_proofForDifferentRecipient() public {
+        // PROOF_OTHER is a valid proof, but bound to OTHER_RECIPIENT as the
+        // recipient public input. Submit it with recipient=paymaster in
+        // callData: this passes the early recipient check and must be
+        // rejected by the verifier because the public inputs no longer
+        // match the proof. This is the real security boundary — the early
+        // recipient check is only a gas/error-quality optimization.
         PackedUserOperation memory op = _pmBuild(
             TornadoFixtures.PROOF_OTHER,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            TornadoFixtures.OTHER_RECIPIENT,
+            address(paymaster),
             0
         );
-
-        vm.expectRevert(TornadoPaymaster.InvalidRecipient.selector);
+        vm.expectRevert(TornadoPaymaster.InvalidProof.selector);
         _callValidate(op);
     }
 
@@ -391,6 +394,43 @@ contract TornadoPaymasterForkTest is Test {
             denomination,
             "gas cost ate the whole denom - grief disincentive broken"
         );
+    }
+
+    function test_sweep() public {
+        // Fund the paymaster directly, then sweep to a fresh recipient.
+        vm.deal(address(paymaster), 3 ether);
+
+        address payable to = payable(address(0xBEEF));
+        uint256 toBefore = to.balance;
+
+        vm.prank(TornadoFixtures.PAYMASTER_OWNER);
+        paymaster.sweep(to);
+
+        assertEq(address(paymaster).balance, 0, "paymaster not drained");
+        assertEq(
+            to.balance - toBefore,
+            3 ether,
+            "recipient did not receive funds"
+        );
+    }
+
+    function test_account_validateUserOp_rejectsNonEntryPoint() public {
+        PackedUserOperation memory op = _pmBuild(
+            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.ROOT,
+            TornadoFixtures.NULLIFIER_HASH,
+            address(paymaster),
+            0
+        );
+        vm.expectRevert(TornadoAccount.CallerNotEntryPoint.selector);
+        account.validateUserOp(op, bytes32(0), 0);
+    }
+
+    function test_sweep_rejectsNonOwner() public {
+        vm.deal(address(paymaster), 1 ether);
+        vm.prank(address(0xBAD));
+        vm.expectRevert(); // OZ Ownable: OwnableUnauthorizedAccount(address)
+        paymaster.sweep(payable(address(0xBAD)));
     }
 
     // Allow this test contract to receive the handleOps beneficiary payout.
