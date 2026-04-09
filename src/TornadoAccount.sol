@@ -1,17 +1,24 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
 import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {ITornadoInstance} from "./interfaces/ITornadoInstance.sol";
 
 contract TornadoAccount is IAccount {
+    // ----- ERRORS -----
+    error CallerNotEntryPoint();
+
     // ----- CONSTANTS -----
+    IEntryPoint public immutable ENTRY_POINT;
     ITornadoInstance public immutable TORNADO_INSTANCE;
 
     // ----- CONSTRUCTOR -----
-    constructor(ITornadoInstance _tornadoInstance) {
+    constructor(IEntryPoint _entryPoint, ITornadoInstance _tornadoInstance) {
+        ENTRY_POINT = _entryPoint;
         TORNADO_INSTANCE = _tornadoInstance;
     }
 
@@ -21,6 +28,7 @@ contract TornadoAccount is IAccount {
         bytes32,
         uint256
     ) external virtual override returns (uint256 validationData) {
+        if (msg.sender != address(ENTRY_POINT)) revert CallerNotEntryPoint();
         validationData = 0;
     }
 
@@ -40,6 +48,5 @@ contract TornadoAccount is IAccount {
             uint256(0), // fee
             refund
         );
-        return;
     }
 }

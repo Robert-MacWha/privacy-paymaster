@@ -25,8 +25,9 @@ import {TornadoAccount} from "./TornadoAccount.sol";
 /// 2. User creates a UserOperation calling `withdraw` on this contract.
 /// 3. EntryPoint calls `validate*` on this contract which validates the proof and
 ///    params against tornado's state.
-/// 4. If valid, the EntryPoint calls `withdraw` on this contract which executes the
-///    withdrawal to this recipient address.
+/// 4. If valid, the EntryPoint calls `TornadoAccount.withdraw` which executes the
+///    tornado withdrawal with this paymaster as the recipient, causing the
+///    denomination to land in this contract.
 /// 5. After withdrawal, the entryPoint calls `postOp` on this contract which deducts
 ///    the fee from the withdrawn amount and forwards the rest to the user's desired
 ///    destination.
@@ -34,6 +35,7 @@ contract TornadoPaymaster is BasePaymaster {
     // ----- ERRORS -----
     error InvalidSelector();
     error InvalidSender();
+    error InvalidRecipient();
     error NonZeroRefund();
     error NullifierAlreadySpent(bytes32 nullifierHash);
     error UnknownRoot(bytes32 root);
@@ -76,13 +78,18 @@ contract TornadoPaymaster is BasePaymaster {
             bytes memory proof,
             bytes32 root,
             bytes32 nullifierHash,
+            address recipient,
             uint256 refund
-        ) = abi.decode(userOp.callData[4:], (bytes, bytes32, bytes32, uint256));
+        ) = abi.decode(
+                userOp.callData[4:],
+                (bytes, bytes32, bytes32, address, uint256)
+            );
+        if (recipient != address(this)) revert InvalidRecipient();
         _verifyWithdrawal(proof, root, nullifierHash, refund);
 
         //? Destination address is encoded in context and used in postOp to forward
         //? withdrawn funds after fee deduction
-        context = context = userOp.paymasterAndData[
+        context = userOp.paymasterAndData[
             PAYMASTER_AND_DATA_OFFSET:PAYMASTER_AND_DATA_OFFSET + 20
         ];
         validationData = 0;
@@ -94,9 +101,15 @@ contract TornadoPaymaster is BasePaymaster {
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas
     ) internal override {
+        //? If the first postOp call reverted (e.g. the destination rejected the
+        //? forward), EntryPoint retries with `postOpReverted`. We intentionally
+        //? early-return here so the full denomination stays in this contract.
+        //? This is the anti-grief invariant.
         if (mode == IPaymaster.PostOpMode.postOpReverted) return;
 
-        address payable destination = payable(abi.decode(context, (address)));
+        // context is exactly the 20-byte destination slice written in validation
+        // forge-lint: disable-next-line(unsafe-typecast)
+        address payable destination = payable(address(bytes20(context)));
 
         uint256 denomination = TORNADO_INSTANCE.denomination();
         uint256 fee = actualGasCost +
@@ -115,6 +128,9 @@ contract TornadoPaymaster is BasePaymaster {
         bytes32 nullifierHash,
         uint256 refund
     ) internal {
+        //? Eth-specific requirement — cheap check first
+        if (refund != 0) revert NonZeroRefund();
+
         // Validate the withdrawal params against tornado state
         if (TORNADO_INSTANCE.nullifierHashes(nullifierHash))
             revert NullifierAlreadySpent(nullifierHash);
@@ -133,9 +149,6 @@ contract TornadoPaymaster is BasePaymaster {
             ]
         );
         if (!valid) revert InvalidProof();
-
-        //? Eth-specific requirement
-        if (refund != 0) revert NonZeroRefund();
     }
 
     receive() external payable {}
