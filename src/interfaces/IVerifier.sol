@@ -5,5 +5,5 @@ interface IVerifier {
     function verifyProof(
         bytes memory proof,
         uint256[6] memory input
-    ) external returns (bool);
+    ) external view returns (bool);
 }
