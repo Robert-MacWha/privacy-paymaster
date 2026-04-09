@@ -1,0 +1,6 @@
+{
+    "solidity.packageDefaultDependenciesDirectory": "lib",
+    "solidity.remappings": [
+        "@account-abstraction/=lib/account-abstraction/"
+    ]
+}
