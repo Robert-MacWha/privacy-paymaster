@@ -12,27 +12,22 @@ import {
 import {IPrivacyAccount} from "./IPrivacyAccount.sol";
 
 /// Abstract base that every per-protocol 4337 account inherits from.
-///
-/// Collects everything that is genuinely identical across protocols:
-///   - the EntryPoint binding + `CallerNotEntryPoint` gate
-///   - a trivial `validateUserOp` (real validation lives in
-///     `evaluateUserOperation`, which the paymaster calls)
-///   - the `execute` entry point: forward the unshield blob to the
-///     immutable `PROTOCOL_TARGET`, then run the tail best-effort
-///
-/// Subclasses only implement `evaluateUserOperation` — the
-/// protocol-specific view that the paymaster uses to validate the
-/// unshield and price the fee.
 abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     // ----- ERRORS -----
     error CallerNotEntryPoint();
     error UnshieldFailed();
 
+    // ----- EVENTS -----
+    event TailCallFailed(
+        uint256 indexed index,
+        address indexed target,
+        bytes returnData
+    );
+
     // ----- IMMUTABLES -----
     IEntryPoint public immutable ENTRY_POINT;
-    /// Address the unshield blob is forwarded to. Typed as `address`
-    /// because every protocol has a different "entrypoint" type; the
-    /// subclass casts it to its own interface in `evaluateUserOperation`.
+
+    /// Address to call unshield on.
     address public immutable PROTOCOL_TARGET;
 
     constructor(IEntryPoint _entryPoint, address _protocolTarget) {
@@ -46,9 +41,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         bytes32,
         uint256
     ) external virtual override returns (uint256 validationData) {
-        // Real validation runs in `evaluateUserOperation`, which the
-        // paymaster calls during `_validatePaymasterUserOp`. This hook
-        // only needs to gate the caller and return the success code.
+        // Validation runs in `evaluateUserOperation`, which the paymaster
+        // calls during `_validatePaymasterUserOp`.
         if (msg.sender != address(ENTRY_POINT)) revert CallerNotEntryPoint();
         validationData = 0;
     }
@@ -60,35 +54,28 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     ) external override {
         if (msg.sender != address(ENTRY_POINT)) revert CallerNotEntryPoint();
 
-        // The unshield MUST succeed — this is how the paymaster gets paid.
+        // The unshield MUST succeed so the paymaster gets paid.
         // aderyn-ignore-next-line(unchecked-low-level-call)
         (bool ok, ) = PROTOCOL_TARGET.call(unshieldCalldata);
         if (!ok) revert UnshieldFailed();
 
-        // Tail calls are best-effort: return values ignored, reverts
-        // isolated from the unshield + paymaster settlement. No `value`
-        // is forwarded — the account never holds ETH.
+        // Tail calls are best-effort: a revert would roll back the unshield
+        // and leave the paymaster unpaid. Failures are emitted as events.
         uint256 len = tail.length;
         for (uint256 i = 0; i < len; ++i) {
             Call calldata c = tail[i];
             // aderyn-ignore-next-line(unchecked-low-level-call)
-            (bool tok, ) = c.target.call(c.data);
-            tok;
+            (bool callOk, bytes memory ret) = c.target.call(c.data);
+            if (!callOk) emit TailCallFailed(i, c.target, ret);
         }
     }
 
-    /// Subclasses MUST implement. See `IPrivacyAccount.evaluateUserOperation`.
     function evaluateUserOperation(
-        bytes calldata unshieldCalldata,
-        address paymaster
+        bytes calldata unshieldCalldata
     )
         external
         view
         virtual
         override
-        returns (
-            address expectedSender,
-            address feeToken,
-            uint256 grossAmount
-        );
+        returns (address feeToken, uint256 grossAmount);
 }

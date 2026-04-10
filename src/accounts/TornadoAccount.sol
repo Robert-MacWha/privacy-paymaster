@@ -9,26 +9,29 @@ import {BasePrivacyAccount} from "./BasePrivacyAccount.sol";
 import {ITornadoInstance} from "../interfaces/ITornadoInstance.sol";
 import {IVerifier} from "../interfaces/IVerifier.sol";
 
-/// Singleton 4337 account bound to a single Tornado Cash ETH instance.
-///
-/// All protocol-specific validation lives in `evaluateUserOperation`:
-/// selector, zero relayer/fee/refund, paymaster recipient, nullifier,
-/// root, and proof. Execution and tail handling come from
-/// `BasePrivacyAccount`.
+/// Singleton 4337 account bound to a single Tornado Cash instance.
 contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector();
     error InvalidRecipient();
-    error NonZeroRelayerOrFee();
+    error NonZeroRelayer();
+    error NonZeroFee();
     error NonZeroRefund();
     error NullifierAlreadySpent();
     error UnknownRoot();
     error InvalidProof();
 
+    /// ----- IMMUTABLES -----
+    // The token address for this TC instance, or address(0) for ETH instances.
+    address private immutable FEE_TOKEN;
+
     constructor(
         IEntryPoint _entryPoint,
-        ITornadoInstance _tornadoInstance
-    ) BasePrivacyAccount(_entryPoint, address(_tornadoInstance)) {}
+        ITornadoInstance _tornadoInstance,
+        address _feeToken
+    ) BasePrivacyAccount(_entryPoint, address(_tornadoInstance)) {
+        FEE_TOKEN = _feeToken;
+    }
 
     // ----- IPrivacyAccount -----
     struct Decoded {
@@ -42,35 +45,36 @@ contract TornadoAccount is BasePrivacyAccount {
     }
 
     function evaluateUserOperation(
-        bytes calldata unshieldCalldata,
-        address paymaster
-    )
-        external
-        view
-        override
-        returns (address expectedSender, address feeToken, uint256 grossAmount)
-    {
+        bytes calldata unshieldCalldata
+    ) external view override returns (address feeToken, uint256 grossAmount) {
+        address paymaster = msg.sender;
         Decoded memory d = _decode(unshieldCalldata);
 
         if (d.recipient != paymaster) revert InvalidRecipient();
-        if (d.relayer != address(0) || d.fee != 0) revert NonZeroRelayerOrFee();
-        // Eth-specific requirement
+        if (d.relayer != address(0)) revert NonZeroRelayer();
+        if (d.fee != 0) revert NonZeroFee();
         if (d.refund != 0) revert NonZeroRefund();
 
         ITornadoInstance tc = ITornadoInstance(PROTOCOL_TARGET);
         if (tc.nullifierHashes(d.nullifierHash)) revert NullifierAlreadySpent();
         if (!tc.isKnownRoot(d.root)) revert UnknownRoot();
 
-        _verifyProof(tc, d.proof, d.root, d.nullifierHash, paymaster);
+        _verifyProof(
+            tc,
+            d.proof,
+            d.root,
+            d.nullifierHash,
+            d.recipient,
+            d.relayer,
+            d.fee,
+            d.refund
+        );
 
-        expectedSender = address(this);
-        feeToken = address(0); // classic TC ETH pool
+        feeToken = FEE_TOKEN;
         grossAmount = tc.denomination();
     }
 
     // ----- Internals -----
-    /// Split out to keep `evaluateUserOperation`'s stack under the EVM's
-    /// 16-slot limit.
     function _decode(
         bytes calldata unshieldCalldata
     ) internal pure returns (Decoded memory d) {
@@ -91,13 +95,15 @@ contract TornadoAccount is BasePrivacyAccount {
         );
     }
 
-    /// Verifier call is pure; safe under 4337 staked storage rules.
     function _verifyProof(
         ITornadoInstance tc,
         bytes memory proof,
         bytes32 root,
         bytes32 nullifierHash,
-        address paymaster
+        address paymaster,
+        address relayer,
+        uint256 fee,
+        uint256 refund
     ) internal view {
         IVerifier verifier = IVerifier(tc.verifier());
         try
@@ -107,9 +113,9 @@ contract TornadoAccount is BasePrivacyAccount {
                     uint256(root),
                     uint256(nullifierHash),
                     uint256(uint160(paymaster)),
-                    uint256(0), // relayer
-                    uint256(0), // fee
-                    uint256(0) // refund
+                    uint256(uint160(relayer)),
+                    fee,
+                    refund
                 ]
             )
         returns (bool valid) {

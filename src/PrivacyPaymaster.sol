@@ -108,10 +108,11 @@ contract PrivacyPaymaster is BasePaymaster {
 
     // aderyn-ignore-next-line(centralization-risk)
     function setFeeToken(address token, bool allowed) external onlyOwner {
+        feeTokenAllowed[token] = allowed;
         if (allowed && token != address(0) && token != WETH) {
             require(ORACLE.isPairSupported(token, WETH), "pair not supported");
         }
-        feeTokenAllowed[token] = allowed;
+
         emit FeeTokenSet(token, allowed);
     }
 
@@ -132,40 +133,24 @@ contract PrivacyPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        // Gate 1: sender must be an explicitly whitelisted PrivacyAccount.
         if (!approvedSenders[userOp.sender]) {
             revert SenderNotApproved(userOp.sender);
         }
 
-        // Enforce uniform account shape.
-        if (
-            bytes4(userOp.callData[:4]) != IPrivacyAccount.execute.selector
-        ) {
-            revert InvalidSelector();
-        }
+        bool isValidSelector = bytes4(userOp.callData[:4]) ==
+            IPrivacyAccount.execute.selector;
+        if (!isValidSelector) revert InvalidSelector();
+
         (bytes memory unshieldCalldata, ) = abi.decode(
             userOp.callData[4:],
             (bytes, IPrivacyAccount.Call[])
         );
 
-        // Delegate protocol-specific validation + value extraction to
-        // the account itself. It reverts on any malformed unshield.
-        (
-            address expectedSender,
-            address feeToken,
-            uint256 grossAmount
-        ) = IPrivacyAccount(userOp.sender).evaluateUserOperation(
-                unshieldCalldata,
-                address(this)
-            );
+        // Perform protocol-specific validation and get the fee token + gross
+        // amount to be unshielded.
+        (address feeToken, uint256 grossAmount) = IPrivacyAccount(userOp.sender)
+            .evaluateUserOperation(unshieldCalldata);
 
-        //? Sanity: the account should only ever approve ops sent from
-        //? itself. Cheap defense-in-depth against a buggy account.
-        if (expectedSender != userOp.sender) {
-            revert SenderMismatch(expectedSender, userOp.sender);
-        }
-
-        // Gate 2: fee token must be allowlisted.
         if (!feeTokenAllowed[feeToken]) {
             revert FeeTokenNotAllowed(feeToken);
         }
@@ -207,7 +192,7 @@ contract PrivacyPaymaster is BasePaymaster {
 
         //? Best-effort forward. Reverting here would roll back the
         //? unshield inside the EntryPoint frame while the paymaster
-        //? stays charged for gas — a grief vector. Hostile destinations
+        //? stays charged for gas - a grief vector. Hostile destinations
         //? cause the paymaster to silently absorb the remainder.
         if (feeToken == address(0)) {
             // aderyn-ignore-next-line(unchecked-low-level-call)
@@ -261,9 +246,6 @@ contract PrivacyPaymaster is BasePaymaster {
         if (paymasterAndData.length < HEADER_OFFSET + 32) {
             revert PaymasterAndDataTooShort();
         }
-        destination = abi.decode(
-            paymasterAndData[HEADER_OFFSET:],
-            (address)
-        );
+        destination = abi.decode(paymasterAndData[HEADER_OFFSET:], (address));
     }
 }

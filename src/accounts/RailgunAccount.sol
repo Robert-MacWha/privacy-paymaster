@@ -23,14 +23,8 @@ contract RailgunAccount is BasePrivacyAccount {
     ) BasePrivacyAccount(_entryPoint, _railgun) {}
 
     function evaluateUserOperation(
-        bytes calldata /* unshieldCalldata */,
-        address /* paymaster */
-    )
-        external
-        view
-        override
-        returns (address expectedSender, address feeToken, uint256 grossAmount)
-    {
+        bytes calldata /* unshieldCalldata */
+    ) external view override returns (address feeToken, uint256 grossAmount) {
         // TODO: once the Railgun Transaction struct is vendored:
         //   - require selector == IRailgunSmartWallet.transact.selector
         //   - decode Transaction[] txs; require txs.length == 1

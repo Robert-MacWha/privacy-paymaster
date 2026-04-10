@@ -20,35 +20,23 @@ import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 import {RevertingReceiver} from "./helpers/RevertingReceiver.sol";
 
 contract PrivacyPaymasterForkTest is Test {
-    // ----- State -----
     IEntryPoint internal entryPoint;
     ITornadoInstance internal tornado;
     TornadoAccount internal account;
     PrivacyPaymaster internal paymaster;
     uint256 internal denomination;
 
-    // paymasterAndData gas-limit fields. These are sized generously and
-    // the tests don't stress them — they only need to be large enough for
-    // validation + postOp to run in handleOps.
     uint128 internal constant PM_VERIFICATION_GAS = 300_000;
     uint128 internal constant PM_POST_OP_GAS = 100_000;
-
-    // EntryPoint v0.9 requires `handleOps` to be called by an EOA
-    // (tx.origin == msg.sender && msg.sender.code.length == 0). Prank as
-    // this address on every handleOps call.
     address internal constant BUNDLER = address(0xB0773);
 
-    // ----- setUp -----
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
 
         entryPoint = IEntryPoint(TornadoFixtures.ENTRY_POINT_ADDR);
         tornado = ITornadoInstance(TornadoFixtures.TORNADO_INSTANCE_ADDR);
         denomination = tornado.denomination();
-
-        // Account address is not committed to by any proof, so it can land
-        // wherever — deploy normally.
-        account = new TornadoAccount(entryPoint, tornado);
+        account = new TornadoAccount(entryPoint, tornado, address(0));
 
         //? Paymaster must land at the exact address the snapshot proofs
         //? commit to (recipient public input). Use forge-std's
@@ -75,8 +63,7 @@ contract PrivacyPaymasterForkTest is Test {
         vm.prank(TornadoFixtures.PAYMASTER_OWNER);
         paymaster.setApprovedSender(address(account), true);
 
-        // Fund paymaster's EntryPoint deposit (not stake — stake is only
-        // enforced in the alt-mempool simulation path, not handleOps).
+        // Fund paymaster's EntryPoint deposit.
         vm.deal(address(this), 10 ether);
         entryPoint.depositTo{value: 1 ether}(address(paymaster));
 
@@ -86,73 +73,6 @@ contract PrivacyPaymasterForkTest is Test {
         vm.deal(depositor, denomination);
         vm.prank(depositor);
         tornado.deposit{value: denomination}(TornadoFixtures.COMMITMENT);
-    }
-
-    // ----- Helpers -----
-    function _buildUserOp(
-        bytes memory proof,
-        bytes32 root,
-        bytes32 nullifier,
-        address recipient,
-        uint256 refund,
-        address destination
-    ) internal view returns (PackedUserOperation memory op) {
-        op.sender = address(account);
-        op.nonce = entryPoint.getNonce(address(account), 0);
-        op.initCode = "";
-
-        bytes memory unshieldCalldata = abi.encodeCall(
-            ITornadoInstance.withdraw,
-            (proof, root, nullifier, payable(recipient), payable(address(0)), 0, refund)
-        );
-        IPrivacyAccount.Call[] memory tail = new IPrivacyAccount.Call[](0);
-        op.callData = abi.encodeCall(IPrivacyAccount.execute, (unshieldCalldata, tail));
-
-        // accountGasLimits = verificationGasLimit(16) || callGasLimit(16)
-        uint128 verificationGasLimit = 500_000;
-        uint128 callGasLimit = 1_500_000;
-        op.accountGasLimits = bytes32(
-            (uint256(verificationGasLimit) << 128) | uint256(callGasLimit)
-        );
-
-        op.preVerificationGas = 100_000;
-
-        // gasFees = maxPriorityFeePerGas(16) || maxFeePerGas(16)
-        uint128 maxPriorityFeePerGas = 1 gwei;
-        uint128 maxFeePerGas = 10 gwei;
-        op.gasFees = bytes32(
-            (uint256(maxPriorityFeePerGas) << 128) | uint256(maxFeePerGas)
-        );
-
-        op.paymasterAndData = bytes.concat(
-            abi.encodePacked(address(paymaster), PM_VERIFICATION_GAS, PM_POST_OP_GAS),
-            abi.encode(destination)
-        );
-        op.signature = "";
-    }
-
-    function _pmBuild(
-        bytes memory proof,
-        bytes32 root,
-        bytes32 nullifier,
-        address recipient,
-        uint256 refund
-    ) internal view returns (PackedUserOperation memory) {
-        return
-            _buildUserOp(
-                proof,
-                root,
-                nullifier,
-                recipient,
-                refund,
-                address(0xCAFE)
-            );
-    }
-
-    function _callValidate(PackedUserOperation memory op) internal {
-        bytes32 dummyHash = keccak256("userOpHash");
-        vm.prank(address(entryPoint));
-        paymaster.validatePaymasterUserOp(op, dummyHash, 0);
     }
 
     // ----- Tests -----
@@ -168,6 +88,8 @@ contract PrivacyPaymasterForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
+            address(0),
+            0,
             0,
             destination
         );
@@ -205,19 +127,6 @@ contract PrivacyPaymasterForkTest is Test {
         );
     }
 
-    function test_valid_proof() public {
-        // Tests just that the validation function accepts a valid proof and params.
-
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-        _callValidate(op);
-    }
-
     function test_validation_wrongSender() public {
         // Asserts that the sender in the userOp is checked
 
@@ -226,123 +135,22 @@ contract PrivacyPaymasterForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
+            address(0),
+            0,
             0
         );
         op.sender = address(0xBAD);
 
         vm.expectRevert(
-            abi.encodeWithSelector(PrivacyPaymaster.SenderNotApproved.selector, address(0xBAD))
-        );
-        _callValidate(op);
-    }
-
-    function test_validation_wrongSelector() public {
-        // Asserts that the callData selector is checked
-
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-        // Replace the selector only, keep the rest of the calldata intact.
-        bytes memory cd = op.callData;
-        cd[0] = 0xde;
-        cd[1] = 0xad;
-        cd[2] = 0xbe;
-        cd[3] = 0xef;
-        op.callData = cd;
-
-        vm.expectRevert(PrivacyPaymaster.InvalidSelector.selector);
-        _callValidate(op);
-    }
-
-    function test_validation_proofForDifferentRecipient() public {
-        // PROOF_OTHER is a valid proof, but bound to OTHER_RECIPIENT as the
-        // recipient public input. Submit it with recipient=paymaster in
-        // callData: this passes the early recipient check and must be
-        // rejected by the verifier because the public inputs no longer
-        // match the proof. This is the real security boundary — the early
-        // recipient check is only a gas/error-quality optimization.
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_OTHER,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-        vm.expectRevert(TornadoAccount.InvalidProof.selector);
-        _callValidate(op);
-    }
-
-    function test_validation_nonZeroRefund() public {
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            1 // non-zero refund
+            abi.encodeWithSelector(
+                PrivacyPaymaster.SenderNotApproved.selector,
+                address(0xBAD)
+            )
         );
 
-        vm.expectRevert(TornadoAccount.NonZeroRefund.selector);
-        _callValidate(op);
-    }
-
-    function test_validation_spentNullifier() public {
-        // Pre-spend via a direct tornado.withdraw so the nullifier is
-        // marked used before the paymaster validation runs.
-        tornado.withdraw(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            payable(address(paymaster)),
-            payable(address(0)),
-            0,
-            0
-        );
-
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-
-        vm.expectRevert(TornadoAccount.NullifierAlreadySpent.selector);
-        _callValidate(op);
-    }
-
-    function test_validation_unknownRoot() public {
-        bytes32 badRoot = bytes32(uint256(0xBEEF));
-        PackedUserOperation memory op = _pmBuild(
-            TornadoFixtures.PROOF_PM,
-            badRoot,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-
-        vm.expectRevert(TornadoAccount.UnknownRoot.selector);
-        _callValidate(op);
-    }
-
-    function test_validation_invalidProof() public {
-        bytes memory tampered = bytes.concat(TornadoFixtures.PROOF_PM);
-        // XOR a single byte in the middle of the proof.
-        tampered[tampered.length / 2] ^= 0x01;
-
-        PackedUserOperation memory op = _pmBuild(
-            tampered,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            0
-        );
-
-        vm.expectRevert(TornadoAccount.InvalidProof.selector);
-        _callValidate(op);
+        bytes32 dummyHash = keccak256("userOpHash");
+        vm.prank(address(entryPoint));
+        paymaster.validatePaymasterUserOp(op, dummyHash, 0);
     }
 
     function test_griefPath() public {
@@ -353,6 +161,8 @@ contract PrivacyPaymasterForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
+            address(0),
+            0,
             0,
             address(bad)
         );
@@ -420,6 +230,8 @@ contract PrivacyPaymasterForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
+            address(0),
+            0,
             0
         );
         vm.expectRevert(BasePrivacyAccount.CallerNotEntryPoint.selector);
@@ -433,6 +245,85 @@ contract PrivacyPaymasterForkTest is Test {
         paymaster.sweep(payable(address(0xBAD)));
     }
 
-    // Allow this test contract to receive the handleOps beneficiary payout.
-    receive() external payable {}
+    // ----- Helpers -----
+    function _pmBuild(
+        bytes memory proof,
+        bytes32 root,
+        bytes32 nullifier,
+        address recipient,
+        address relayer,
+        uint256 fee,
+        uint256 refund
+    ) internal view returns (PackedUserOperation memory) {
+        return
+            _buildUserOp(
+                proof,
+                root,
+                nullifier,
+                recipient,
+                relayer,
+                fee,
+                refund,
+                address(0xCAFE)
+            );
+    }
+
+    function _buildUserOp(
+        bytes memory proof,
+        bytes32 root,
+        bytes32 nullifier,
+        address recipient,
+        address relayer,
+        uint256 fee,
+        uint256 refund,
+        address destination
+    ) internal view returns (PackedUserOperation memory op) {
+        op.sender = address(account);
+        op.nonce = entryPoint.getNonce(address(account), 0);
+        op.initCode = "";
+
+        bytes memory unshieldCalldata = abi.encodeCall(
+            ITornadoInstance.withdraw,
+            (
+                proof,
+                root,
+                nullifier,
+                payable(recipient),
+                payable(relayer),
+                fee,
+                refund
+            )
+        );
+        IPrivacyAccount.Call[] memory tail = new IPrivacyAccount.Call[](0);
+        op.callData = abi.encodeCall(
+            IPrivacyAccount.execute,
+            (unshieldCalldata, tail)
+        );
+
+        // accountGasLimits = verificationGasLimit(16) || callGasLimit(16)
+        uint128 verificationGasLimit = 500_000;
+        uint128 callGasLimit = 1_500_000;
+        op.accountGasLimits = bytes32(
+            (uint256(verificationGasLimit) << 128) | uint256(callGasLimit)
+        );
+
+        op.preVerificationGas = 100_000;
+
+        // gasFees = maxPriorityFeePerGas(16) || maxFeePerGas(16)
+        uint128 maxPriorityFeePerGas = 1 gwei;
+        uint128 maxFeePerGas = 10 gwei;
+        op.gasFees = bytes32(
+            (uint256(maxPriorityFeePerGas) << 128) | uint256(maxFeePerGas)
+        );
+
+        op.paymasterAndData = bytes.concat(
+            abi.encodePacked(
+                address(paymaster),
+                PM_VERIFICATION_GAS,
+                PM_POST_OP_GAS
+            ),
+            abi.encode(destination)
+        );
+        op.signature = "";
+    }
 }

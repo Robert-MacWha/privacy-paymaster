@@ -2,7 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {
+    IEntryPoint
+} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IStaticOracle} from "../src/interfaces/IStaticOracle.sol";
 
 import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
@@ -49,7 +51,8 @@ contract DeployPrivacy is Script {
 
         TornadoAccount tornadoAccount = new TornadoAccount{salt: salt}(
             IEntryPoint(entryPoint),
-            ITornadoInstance(tornadoInstance)
+            ITornadoInstance(tornadoInstance),
+            address(0) // fee token, address(0) for ETH instances
         );
 
         //? Wiring only runs when the deployer key is also the owner.
