@@ -10,11 +10,11 @@ import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
-import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {BasePrivacyAccount} from "../src/accounts/BasePrivacyAccount.sol";
-import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
-import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
-import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
+import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
+import {BasePrivacyAccount} from "../contracts/accounts/BasePrivacyAccount.sol";
+import {TornadoAccount} from "../contracts/accounts/TornadoAccount.sol";
+import {IPrivacyAccount} from "../contracts/accounts/IPrivacyAccount.sol";
+import {ITornadoInstance} from "../contracts/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 
@@ -105,19 +105,16 @@ contract PrivacyPaymasterForkTest is Test {
             "nullifier not spent"
         );
 
-        // Destination got denom - fee; fee is strictly positive and less
-        // than denom (otherwise either postOp math is broken or the safety
-        // cap hit and destination got nothing).
+        // Destination got (denomination - fee).
         uint256 received = destination.balance;
         assertGt(received, 0, "destination received nothing (cap hit?)");
         assertLt(received, denomination, "fee was zero");
 
-        // Paymaster contract balance is the leftover "fee" portion kept
-        // for gas-cost recovery (it forwards denom - fee to destination).
+        // Paymaster got fee.
         uint256 feeKept = denomination - received;
         assertEq(address(paymaster).balance, feeKept, "fee not kept");
 
-        // Sanity: EntryPoint deposit was debited for actual gas cost.
+        // Sanity: EntryPoint deposit was debited for gas cost.
         assertLt(
             entryPoint.balanceOf(address(paymaster)),
             pmDepositBefore,

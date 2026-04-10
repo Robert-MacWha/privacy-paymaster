@@ -5,11 +5,11 @@ import {Script} from "forge-std/Script.sol";
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {IStaticOracle} from "../src/interfaces/IStaticOracle.sol";
+import {IStaticOracle} from "../contracts/interfaces/IStaticOracle.sol";
 
-import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
-import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
+import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
+import {TornadoAccount} from "../contracts/accounts/TornadoAccount.sol";
+import {ITornadoInstance} from "../contracts/interfaces/ITornadoInstance.sol";
 
 /// Deterministic deployment for the multi-protocol PrivacyPaymaster stack.
 ///
