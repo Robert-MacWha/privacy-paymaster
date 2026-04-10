@@ -7,10 +7,10 @@ import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
-import {BasePrivacyAccount} from "../contracts/accounts/BasePrivacyAccount.sol";
-import {IPrivacyAccount} from "../contracts/accounts/IPrivacyAccount.sol";
-import {TornadoAccount} from "../contracts/accounts/TornadoAccount.sol";
-import {ITornadoInstance} from "../contracts/interfaces/ITornadoInstance.sol";
+import {BasePrivacyAccount} from "../src/accounts/BasePrivacyAccount.sol";
+import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
+import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
+import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
 
 import {CallReverter} from "./helpers/CallReverter.sol";
 
