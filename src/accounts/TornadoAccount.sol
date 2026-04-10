@@ -23,7 +23,9 @@ contract TornadoAccount is BasePrivacyAccount {
 
     /// ----- IMMUTABLES -----
     // The token address for this TC instance, or address(0) for ETH instances.
-    address private immutable FEE_TOKEN;
+    address public immutable FEE_TOKEN;
+    ITornadoInstance immutable TORNADO_INSTANCE =
+        ITornadoInstance(address(this));
 
     constructor(
         IEntryPoint _entryPoint,
@@ -31,6 +33,7 @@ contract TornadoAccount is BasePrivacyAccount {
         address _feeToken
     ) BasePrivacyAccount(_entryPoint, address(_tornadoInstance)) {
         FEE_TOKEN = _feeToken;
+        TORNADO_INSTANCE = _tornadoInstance;
     }
 
     // ----- IPrivacyAccount -----
@@ -67,12 +70,11 @@ contract TornadoAccount is BasePrivacyAccount {
         if (d.fee != 0) revert NonZeroFee();
         if (d.refund != 0) revert NonZeroRefund();
 
-        ITornadoInstance tc = ITornadoInstance(PROTOCOL_TARGET);
-        if (tc.nullifierHashes(d.nullifierHash)) revert NullifierAlreadySpent();
-        if (!tc.isKnownRoot(d.root)) revert UnknownRoot();
+        if (TORNADO_INSTANCE.nullifierHashes(d.nullifierHash))
+            revert NullifierAlreadySpent();
+        if (!TORNADO_INSTANCE.isKnownRoot(d.root)) revert UnknownRoot();
 
         _verifyProof(
-            tc,
             d.proof,
             d.root,
             d.nullifierHash,
@@ -84,7 +86,7 @@ contract TornadoAccount is BasePrivacyAccount {
 
         destination = d.relayer;
         feeToken = FEE_TOKEN;
-        grossAmount = tc.denomination();
+        grossAmount = TORNADO_INSTANCE.denomination();
     }
 
     // ----- Internals -----
@@ -109,7 +111,6 @@ contract TornadoAccount is BasePrivacyAccount {
     }
 
     function _verifyProof(
-        ITornadoInstance tc,
         bytes memory proof,
         bytes32 root,
         bytes32 nullifierHash,
@@ -118,7 +119,7 @@ contract TornadoAccount is BasePrivacyAccount {
         uint256 fee,
         uint256 refund
     ) internal view {
-        IVerifier verifier = IVerifier(tc.verifier());
+        IVerifier verifier = IVerifier(TORNADO_INSTANCE.verifier());
         try
             verifier.verifyProof(
                 proof,

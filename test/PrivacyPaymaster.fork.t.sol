@@ -17,7 +17,6 @@ import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
 import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
-import {RevertingReceiver} from "./helpers/RevertingReceiver.sol";
 
 contract PrivacyPaymasterForkTest is Test {
     IEntryPoint internal entryPoint;

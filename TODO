@@ -1,0 +1,15 @@
+For tc and ppv1, consider using their built-in fee mechanisms.  This would involve:
+1. instead of setting the receiver to the paymaster, the receiver would be the user's destination.
+2. The fee & relayer fields would be set to the paymaster, and to a large enough fee to compensate the paymaster.
+3. Off-chain the user would need to set the fee to the estimated cost of the transaction
+4. The paymaster would verify the proof and that the fee is sufficient.  If so, it would allow the tx.
+
+This is probably better since it's more ideomatic, but a little more complex since we need to estimate paymaster
+fee ahead of time within the contract based on the UserOperation's gas limit and how much the operation costs. Would
+also generally lead to the user paying more in fees, since they need to over-estimate to be safe.  Worth considering.
+
+For railgun something similar could also be done, just much more complex.  Since we can't perform two unshield operations with the same UTXO note, we'd need to:
+1. in the first railgun operation, unshield to paymaster for fee + change notea
+2. In the second operation, executed in a new call to railgun's transact method, consume the newly created change note as input and do whatever with it.
+
+This means we'd need to calculate off-chain the new merkle root, the change note's info, and proof.  This is 100% possible, just really really annoying.

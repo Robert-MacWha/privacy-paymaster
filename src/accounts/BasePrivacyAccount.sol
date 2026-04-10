@@ -28,7 +28,7 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     IEntryPoint public immutable ENTRY_POINT;
 
     /// Address to call unshield on.
-    address public immutable PROTOCOL_TARGET;
+    address private immutable PROTOCOL_TARGET;
 
     constructor(IEntryPoint _entryPoint, address _protocolTarget) {
         ENTRY_POINT = _entryPoint;

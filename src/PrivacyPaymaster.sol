@@ -60,12 +60,6 @@ contract PrivacyPaymaster is BasePaymaster {
     /// settlement. Prevents hostile destinations from griefing.
     uint256 public constant FORWARD_GAS_BUDGET = 1e4;
 
-    /// Offset where the user-controlled `paymasterAndData` tail begins
-    /// (after the EntryPoint-mandated prefix:
-    /// paymaster(20) || verificationGasLimit(16) || postOpGasLimit(16)).
-    /// The tail is `abi.encode(address destination)` = 32 bytes.
-    uint256 private constant HEADER_OFFSET = 20 + 16 + 16;
-
     // ----- IMMUTABLES -----
     IStaticOracle public immutable ORACLE;
     address public immutable WETH;
