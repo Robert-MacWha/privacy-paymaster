@@ -36,6 +36,7 @@
         devShells.default = pkgs.mkShell {
           packages = [
             pkgs.foundry
+            pkgs.bun
             aderyn
           ];
         };
