@@ -9,13 +9,10 @@ These paymasters here are structurally similar to [ERC20 paymasters](https://doc
 ### Smart Contracts (Foundry/Solidity)
 - **Location**: `/src/` directory
 - **Key Contracts**:
-  - `TornadoAccount.sol` - Singleton 4337 account bound to the paymaster
-  - `TornadoPaymaster.sol` - Handles userOp sponsorship and cost recovery for tornado withdrawals
-
-### Security Notes
-
-- `validatePaymasterUserOp` must always guarantee that the paymaster will receive payment for the user operation
-- Paymasters should be designed to handle edge cases (e.g. failed withdrawals, small withdrawal amounts, front-running attempts, etc.) gracefully without risking loss of funds or denial of service
+  - `PrivacyPaymaster.sol` - Master paymaster controller. Routes user operations to protocol-specific account handlers and manages fee collection.
+  - `accounts/IPrivacyAccount.sol` - 4337 sender account interface.
+  - `accounts/BasePrivacyAccount.sol` - Base 4337 & privacy account impl. Executes user operations once validated.
+  - `accounts/*Account.sol` - Protocol specific account implementations (e.g. TornadoAccount, RailgunAccount). Handle validation of userOps to ensure they corespond to valid unshields.
 
 ### Happy Path
 
@@ -121,3 +118,6 @@ When working with this codebase, prefer these approaches:
 - Implement proper access controls
 - Consider economic attack vectors (oracle manipulation, front-running, etc.)
 - Test edge cases thoroughly
+- `validatePaymasterUserOp` must always guarantee that the paymaster will receive payment for the user operation.
+- Paymasters should be designed to handle edge cases (e.g. failed withdrawals, small withdrawal amounts, front-running attempts, etc.) gracefully without risking loss of funds or denial of service.
+- All sensitive data must be contained within the zk proofs to avoid replay attacks. For example, data from the paymasterData or calldata that is not validated by the proof should never be used.
