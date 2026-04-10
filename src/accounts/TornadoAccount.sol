@@ -14,7 +14,7 @@ contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector();
     error InvalidRecipient();
-    error NonZeroRelayer();
+    error InvalidRelayer();
     error NonZeroFee();
     error NonZeroRefund();
     error NullifierAlreadySpent();
@@ -44,14 +44,26 @@ contract TornadoAccount is BasePrivacyAccount {
         uint256 refund;
     }
 
+    /// @dev Because we want the full unshield to be credited to the paymaster
+    /// which in turn credits the user's destination, the recipient in the unshield
+    /// must be the paymaster while the relayer is used as the ultimate destination.
+    /// A little unorthodox, but it works.
+    ///
+    /// @dev We do this rather than having the user pre-compute the fee so that
+    /// for fee-less protocols (IE railgun) we can use the same paymaster logic.
     function evaluateUserOperation(
         bytes calldata unshieldCalldata
-    ) external view override returns (address feeToken, uint256 grossAmount) {
+    )
+        external
+        view
+        override
+        returns (address destination, address feeToken, uint256 grossAmount)
+    {
         address paymaster = msg.sender;
         Decoded memory d = _decode(unshieldCalldata);
 
         if (d.recipient != paymaster) revert InvalidRecipient();
-        if (d.relayer != address(0)) revert NonZeroRelayer();
+        if (d.relayer == address(0)) revert InvalidRelayer();
         if (d.fee != 0) revert NonZeroFee();
         if (d.refund != 0) revert NonZeroRefund();
 
@@ -70,6 +82,7 @@ contract TornadoAccount is BasePrivacyAccount {
             d.refund
         );
 
+        destination = d.relayer;
         feeToken = FEE_TOKEN;
         grossAmount = tc.denomination();
     }

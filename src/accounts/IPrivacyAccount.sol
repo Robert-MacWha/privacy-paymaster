@@ -19,6 +19,7 @@ interface IPrivacyAccount {
     ///
     /// @param unshieldCalldata The exact calldata the account will
     /// forward to the unshield protocol.
+    /// @return destination The final user recipient of the unshielded funds.
     /// @return feeToken The ERC20 (or `address(0)` for native) being
     /// unshielded and credited to the paymaster.
     /// @return grossAmount The amount of `feeToken` the paymaster will
@@ -28,7 +29,10 @@ interface IPrivacyAccount {
     /// bad proof, spent nullifier, ...).
     function evaluateUserOperation(
         bytes calldata unshieldCalldata
-    ) external view returns (address feeToken, uint256 grossAmount);
+    )
+        external
+        view
+        returns (address destination, address feeToken, uint256 grossAmount);
 
     /// Execute a single unshield (must succeed) followed by best-effort
     /// tail calls (return values ignored, reverts isolated to emits).

@@ -148,8 +148,13 @@ contract PrivacyPaymaster is BasePaymaster {
 
         // Perform protocol-specific validation and get the fee token + gross
         // amount to be unshielded.
-        (address feeToken, uint256 grossAmount) = IPrivacyAccount(userOp.sender)
-            .evaluateUserOperation(unshieldCalldata);
+        (
+            address destination,
+            address feeToken,
+            uint256 grossAmount
+        ) = IPrivacyAccount(userOp.sender).evaluateUserOperation(
+                unshieldCalldata
+            );
 
         if (!feeTokenAllowed[feeToken]) {
             revert FeeTokenNotAllowed(feeToken);
@@ -163,8 +168,6 @@ contract PrivacyPaymaster is BasePaymaster {
         if (grossAmount < requiredInToken) {
             revert InsufficientGross(requiredInToken, grossAmount);
         }
-
-        address destination = _readDestination(userOp.paymasterAndData);
 
         context = abi.encode(feeToken, destination, grossAmount);
         validationData = 0;
@@ -235,17 +238,5 @@ contract PrivacyPaymaster is BasePaymaster {
             feeToken,
             TWAP_PERIOD
         );
-    }
-
-    /// `paymasterAndData` tail is `abi.encode(address destination)`.
-    /// Using abi.decode avoids the pitfall of manual byte offsets
-    /// drifting if the layout changes.
-    function _readDestination(
-        bytes calldata paymasterAndData
-    ) internal pure returns (address destination) {
-        if (paymasterAndData.length < HEADER_OFFSET + 32) {
-            revert PaymasterAndDataTooShort();
-        }
-        destination = abi.decode(paymasterAndData[HEADER_OFFSET:], (address));
     }
 }

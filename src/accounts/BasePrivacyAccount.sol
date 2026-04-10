@@ -77,5 +77,5 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         view
         virtual
         override
-        returns (address feeToken, uint256 grossAmount);
+        returns (address destination, address feeToken, uint256 grossAmount);
 }

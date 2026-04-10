@@ -22,7 +22,12 @@ contract PrivacyPoolsAccount is BasePrivacyAccount {
 
     function evaluateUserOperation(
         bytes calldata /* unshieldCalldata */
-    ) external view override returns (address feeToken, uint256 grossAmount) {
+    )
+        external
+        view
+        override
+        returns (address destination, address feeToken, uint256 grossAmount)
+    {
         // TODO: once the Privacy Pools struct layout is vendored:
         //   - require selector == IEntrypoint.relay.selector
         //   - decode (Withdrawal w, WithdrawProof proof, uint256 sigScope)

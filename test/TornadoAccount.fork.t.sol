@@ -75,7 +75,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            address(0),
+            address(0xC0FFEE),
             0,
             0
         );
@@ -89,7 +89,7 @@ contract TornadoAccountForkTest is Test {
                 TornadoFixtures.ROOT,
                 TornadoFixtures.NULLIFIER_HASH,
                 paymaster,
-                payable(address(0)),
+                payable(address(1)),
                 0,
                 0
             )
@@ -110,20 +110,20 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             payable(address(1)),
-            payable(address(0)),
+            payable(address(1)),
             0,
             0
         );
     }
 
-    function test_nonZeroRelayer() public {
-        vm.expectRevert(TornadoAccount.NonZeroRelayer.selector);
+    function test_invalidRelayer() public {
+        vm.expectRevert(TornadoAccount.InvalidRelayer.selector);
         _evaluate(
             TornadoFixtures.PROOF_PM,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(1)),
+            payable(address(0)),
             0,
             0
         );
@@ -136,7 +136,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             1,
             0
         );
@@ -149,7 +149,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(1)),
             0,
             1
         );
@@ -161,7 +161,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             0,
             0
         );
@@ -171,7 +171,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             0,
             0
         );
@@ -184,7 +184,7 @@ contract TornadoAccountForkTest is Test {
             bytes32(uint256(0xBEEF)),
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             0,
             0
         );
@@ -199,7 +199,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             0,
             0
         );
@@ -215,7 +215,7 @@ contract TornadoAccountForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             paymaster,
-            payable(address(0)),
+            payable(address(0xC0FFEE)),
             0,
             0
         );

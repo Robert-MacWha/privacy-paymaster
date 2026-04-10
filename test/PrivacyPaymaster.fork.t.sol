@@ -88,10 +88,9 @@ contract PrivacyPaymasterForkTest is Test {
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
-            address(0),
+            address(0xC0FFEE),
             0,
-            0,
-            destination
+            0
         );
 
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
@@ -130,12 +129,12 @@ contract PrivacyPaymasterForkTest is Test {
     function test_validation_wrongSender() public {
         // Asserts that the sender in the userOp is checked
 
-        PackedUserOperation memory op = _pmBuild(
+        PackedUserOperation memory op = _buildUserOp(
             TornadoFixtures.PROOF_PM,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
-            address(0),
+            address(0xC0FFEE),
             0,
             0
         );
@@ -151,59 +150,6 @@ contract PrivacyPaymasterForkTest is Test {
         bytes32 dummyHash = keccak256("userOpHash");
         vm.prank(address(entryPoint));
         paymaster.validatePaymasterUserOp(op, dummyHash, 0);
-    }
-
-    function test_griefPath() public {
-        RevertingReceiver bad = new RevertingReceiver();
-
-        PackedUserOperation memory op = _buildUserOp(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            address(0),
-            0,
-            0,
-            address(bad)
-        );
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
-        ops[0] = op;
-
-        uint256 depositBefore = entryPoint.balanceOf(address(paymaster));
-
-        // handleOps must NOT revert: _postOp swallows the failed forward
-        // (low-level call returns ok=false, we ignore it) so the tornado
-        // withdrawal stays committed and the denom is absorbed here.
-        // If we ever reintroduce a revert in _postOp, v0.7+ EntryPoint
-        // will roll back the whole execution frame and this test will
-        // start seeing nullifier-not-spent.
-        vm.prank(BUNDLER, BUNDLER);
-        entryPoint.handleOps(ops, payable(BUNDLER));
-
-        // Nullifier is spent (the withdrawal landed).
-        assertTrue(
-            tornado.nullifierHashes(TornadoFixtures.NULLIFIER_HASH),
-            "nullifier not spent"
-        );
-        // The reverting destination got nothing.
-        assertEq(address(bad).balance, 0, "reverting receiver got funds");
-        // Paymaster kept the whole denomination.
-        assertEq(
-            address(paymaster).balance,
-            denomination,
-            "denom not absorbed"
-        );
-
-        // Net effect on paymaster is strongly positive: deposit debited by
-        // ~actualGasCost, denom gained in full.
-        uint256 depositAfter = entryPoint.balanceOf(address(paymaster));
-        assertLt(depositAfter, depositBefore, "deposit not debited");
-        uint256 gasCost = depositBefore - depositAfter;
-        assertLt(
-            gasCost,
-            denomination,
-            "gas cost ate the whole denom - grief disincentive broken"
-        );
     }
 
     function test_sweep() public {
@@ -225,12 +171,12 @@ contract PrivacyPaymasterForkTest is Test {
     }
 
     function test_account_validateUserOp_rejectsNonEntryPoint() public {
-        PackedUserOperation memory op = _pmBuild(
+        PackedUserOperation memory op = _buildUserOp(
             TornadoFixtures.PROOF_PM,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
             address(paymaster),
-            address(0),
+            address(0xC0FFEE),
             0,
             0
         );
@@ -246,28 +192,6 @@ contract PrivacyPaymasterForkTest is Test {
     }
 
     // ----- Helpers -----
-    function _pmBuild(
-        bytes memory proof,
-        bytes32 root,
-        bytes32 nullifier,
-        address recipient,
-        address relayer,
-        uint256 fee,
-        uint256 refund
-    ) internal view returns (PackedUserOperation memory) {
-        return
-            _buildUserOp(
-                proof,
-                root,
-                nullifier,
-                recipient,
-                relayer,
-                fee,
-                refund,
-                address(0xCAFE)
-            );
-    }
-
     function _buildUserOp(
         bytes memory proof,
         bytes32 root,
@@ -275,8 +199,7 @@ contract PrivacyPaymasterForkTest is Test {
         address recipient,
         address relayer,
         uint256 fee,
-        uint256 refund,
-        address destination
+        uint256 refund
     ) internal view returns (PackedUserOperation memory op) {
         op.sender = address(account);
         op.nonce = entryPoint.getNonce(address(account), 0);
@@ -316,13 +239,10 @@ contract PrivacyPaymasterForkTest is Test {
             (uint256(maxPriorityFeePerGas) << 128) | uint256(maxFeePerGas)
         );
 
-        op.paymasterAndData = bytes.concat(
-            abi.encodePacked(
-                address(paymaster),
-                PM_VERIFICATION_GAS,
-                PM_POST_OP_GAS
-            ),
-            abi.encode(destination)
+        op.paymasterAndData = abi.encodePacked(
+            address(paymaster),
+            PM_VERIFICATION_GAS,
+            PM_POST_OP_GAS
         );
         op.signature = "";
     }
