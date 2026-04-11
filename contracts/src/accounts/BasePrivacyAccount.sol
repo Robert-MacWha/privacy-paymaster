@@ -11,7 +11,7 @@ import {
 
 import {IPrivacyAccount} from "./IPrivacyAccount.sol";
 
-/// Abstract base that every per-protocol 4337 account inherits from.
+/// Abstract PrivacyAccount implementing universal `execute` logic.
 abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     // ----- ERRORS -----
     error CallerNotEntryPoint();
@@ -27,7 +27,7 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     // ----- IMMUTABLES -----
     IEntryPoint public immutable ENTRY_POINT;
 
-    /// Address to call unshield on.
+    /// Address on which to call unshield.
     address private immutable PROTOCOL_TARGET;
 
     constructor(IEntryPoint _entryPoint, address _protocolTarget) {
@@ -48,6 +48,15 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     }
 
     // ----- IPrivacyAccount -----
+    function previewUnshield(
+        bytes calldata unshieldCalldata
+    )
+        external
+        view
+        virtual
+        override
+        returns (address feeToken, uint256 feeAmount);
+
     function execute(
         bytes calldata unshieldCalldata,
         Call[] calldata tail
@@ -69,13 +78,4 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
             if (!callOk) emit TailCallFailed(i, c.target, ret);
         }
     }
-
-    function evaluateUserOperation(
-        bytes calldata unshieldCalldata
-    )
-        external
-        view
-        virtual
-        override
-        returns (address destination, address feeToken, uint256 grossAmount);
 }

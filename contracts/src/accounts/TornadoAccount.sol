@@ -9,13 +9,12 @@ import {BasePrivacyAccount} from "./BasePrivacyAccount.sol";
 import {ITornadoInstance} from "../interfaces/ITornadoInstance.sol";
 import {IVerifier} from "../interfaces/IVerifier.sol";
 
-/// Singleton 4337 account bound to a single Tornado Cash instance.
 contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector();
     error InvalidRecipient();
     error InvalidRelayer();
-    error NonZeroFee();
+    error InvalidFee();
     error NonZeroRefund();
     error NullifierAlreadySpent();
     error UnknownRoot();
@@ -26,6 +25,7 @@ contract TornadoAccount is BasePrivacyAccount {
     address public immutable FEE_TOKEN;
     ITornadoInstance immutable TORNADO_INSTANCE =
         ITornadoInstance(address(this));
+    uint256 public immutable TORNADO_INSTANCE_DENOMINATION;
 
     constructor(
         IEntryPoint _entryPoint,
@@ -34,6 +34,7 @@ contract TornadoAccount is BasePrivacyAccount {
     ) BasePrivacyAccount(_entryPoint, address(_tornadoInstance)) {
         FEE_TOKEN = _feeToken;
         TORNADO_INSTANCE = _tornadoInstance;
+        TORNADO_INSTANCE_DENOMINATION = _tornadoInstance.denomination();
     }
 
     // ----- IPrivacyAccount -----
@@ -47,27 +48,16 @@ contract TornadoAccount is BasePrivacyAccount {
         uint256 refund;
     }
 
-    /// @dev Because we want the full unshield to be credited to the paymaster
-    /// which in turn credits the user's destination, the recipient in the unshield
-    /// must be the paymaster while the relayer is used as the ultimate destination.
-    /// A little unorthodox, but it works.
-    ///
-    /// @dev We do this rather than having the user pre-compute the fee so that
-    /// for fee-less protocols (IE railgun) we can use the same paymaster logic.
-    function evaluateUserOperation(
+    function previewUnshield(
         bytes calldata unshieldCalldata
-    )
-        external
-        view
-        override
-        returns (address destination, address feeToken, uint256 grossAmount)
-    {
+    ) external view override returns (address feeToken, uint256 feeAmount) {
         address paymaster = msg.sender;
         Decoded memory d = _decode(unshieldCalldata);
 
-        if (d.recipient != paymaster) revert InvalidRecipient();
-        if (d.relayer == address(0)) revert InvalidRelayer();
-        if (d.fee != 0) revert NonZeroFee();
+        if (d.recipient == address(0)) revert InvalidRecipient();
+        if (d.relayer != paymaster) revert InvalidRelayer();
+        if (d.fee == 0) revert InvalidFee();
+        if (d.fee > TORNADO_INSTANCE_DENOMINATION) revert InvalidFee();
         if (d.refund != 0) revert NonZeroRefund();
 
         if (TORNADO_INSTANCE.nullifierHashes(d.nullifierHash))
@@ -84,9 +74,8 @@ contract TornadoAccount is BasePrivacyAccount {
             d.refund
         );
 
-        destination = d.relayer;
         feeToken = FEE_TOKEN;
-        grossAmount = TORNADO_INSTANCE.denomination();
+        feeAmount = d.fee;
     }
 
     // ----- Internals -----

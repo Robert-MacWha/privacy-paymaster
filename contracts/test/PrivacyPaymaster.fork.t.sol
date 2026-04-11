@@ -40,28 +40,28 @@ contract PrivacyPaymasterForkTest is Test {
         tornado = ITornadoInstance(TornadoFixtures.TORNADO_INSTANCE_ADDR);
         denomination = tornado.denomination();
 
-        vm.setEnv("ENTRY_POINT", vm.toString(TornadoFixtures.ENTRY_POINT_ADDR));
-        vm.setEnv("DEPLOYER_PK", vm.toString(TornadoFixtures.DEPLOYER_PK));
-        vm.setEnv("WETH", vm.toString(address(0)));
-        vm.setEnv("STATIC_ORACLE", vm.toString(address(0)));
-        vm.setEnv("TWAP_PERIOD", "0");
-
-        address paymasterAddr = new DeployPaymaster().run();
+        address paymasterAddr = new DeployPaymaster().deploy(
+            TornadoFixtures.ENTRY_POINT_ADDR,
+            address(0),
+            address(0),
+            0,
+            TornadoFixtures.DEPLOYER_PK
+        );
         paymaster = PrivacyPaymaster(payable(paymasterAddr));
 
-        vm.setEnv("PAYMASTER", vm.toString(paymasterAddr));
-        vm.setEnv("STAKE_AMOUNT", vm.toString(uint256(1 ether)));
-        vm.setEnv("UNSTAKE_DELAY", "3600");
-        vm.setEnv("DEPOSIT_AMOUNT", vm.toString(uint256(1 ether)));
-
-        new StakePaymaster().run();
-
-        vm.setEnv(
-            "TORNADO_INSTANCE",
-            vm.toString(TornadoFixtures.TORNADO_INSTANCE_ADDR)
+        new StakePaymaster().stake(
+            paymasterAddr,
+            1 ether,
+            3600,
+            1 ether,
+            TornadoFixtures.DEPLOYER_PK
         );
 
-        address tornadoAccountAddr = new DeployTornado().run();
+        address tornadoAccountAddr = new DeployTornado().deploy(
+            paymasterAddr,
+            TornadoFixtures.TORNADO_INSTANCE_ADDR,
+            TornadoFixtures.DEPLOYER_PK
+        );
         account = TornadoAccount(tornadoAccountAddr);
 
         // Deposit snapshot note into tc instance for tests
@@ -74,25 +74,22 @@ contract PrivacyPaymasterForkTest is Test {
     // ----- Tests -----
 
     function test_happyPath() public {
-        // Tests the full happy path including 4337's handling of the operation.
-
-        address destination = address(0xC0FFEE);
-        assertEq(destination.balance, 0);
+        assertEq(TornadoFixtures.RECIPIENT.balance, 0);
 
         PackedUserOperation memory op = _buildUserOp(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            address(0xC0FFEE),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
 
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = op;
 
-        uint256 pmDepositBefore = entryPoint.balanceOf(address(paymaster));
+        //? EntryPoint's nonReentrant guard requires the sender to be an EOA.
         vm.prank(BUNDLER, BUNDLER);
         entryPoint.handleOps(ops, payable(BUNDLER));
 
@@ -102,47 +99,19 @@ contract PrivacyPaymasterForkTest is Test {
             "nullifier not spent"
         );
 
-        // Destination got (denomination - fee).
-        uint256 received = destination.balance;
-        assertGt(received, 0, "destination received nothing (cap hit?)");
-        assertLt(received, denomination, "fee was zero");
+        // Destination got funds minus fee.
+        assertEq(
+            TornadoFixtures.RECIPIENT.balance,
+            denomination - TornadoFixtures.FEE,
+            "Fee not paid"
+        );
 
         // Paymaster got fee.
-        uint256 feeKept = denomination - received;
-        assertEq(address(paymaster).balance, feeKept, "fee not kept");
-
-        // Sanity: EntryPoint deposit was debited for gas cost.
-        assertLt(
-            entryPoint.balanceOf(address(paymaster)),
-            pmDepositBefore,
-            "deposit not debited"
+        assertEq(
+            TornadoFixtures.PAYMASTER.balance,
+            TornadoFixtures.FEE,
+            "Fee not kept"
         );
-    }
-
-    function test_validation_wrongSender() public {
-        // Asserts that the sender in the userOp is checked
-
-        PackedUserOperation memory op = _buildUserOp(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            address(0xC0FFEE),
-            0,
-            0
-        );
-        op.sender = address(0xBAD);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PrivacyPaymaster.SenderNotApproved.selector,
-                address(0xBAD)
-            )
-        );
-
-        bytes32 dummyHash = keccak256("userOpHash");
-        vm.prank(address(entryPoint));
-        paymaster.validatePaymasterUserOp(op, dummyHash, 0);
     }
 
     function test_sweep() public {
@@ -152,7 +121,7 @@ contract PrivacyPaymasterForkTest is Test {
         address payable to = payable(address(0xBEEF));
         uint256 toBefore = to.balance;
 
-        vm.prank(TornadoFixtures.PAYMASTER_OWNER);
+        vm.prank(vm.addr(TornadoFixtures.DEPLOYER_PK));
         paymaster.sweep(to);
 
         assertEq(address(paymaster).balance, 0, "paymaster not drained");
@@ -161,20 +130,6 @@ contract PrivacyPaymasterForkTest is Test {
             3 ether,
             "recipient did not receive funds"
         );
-    }
-
-    function test_account_validateUserOp_rejectsNonEntryPoint() public {
-        PackedUserOperation memory op = _buildUserOp(
-            TornadoFixtures.PROOF_PM,
-            TornadoFixtures.ROOT,
-            TornadoFixtures.NULLIFIER_HASH,
-            address(paymaster),
-            address(0xC0FFEE),
-            0,
-            0
-        );
-        vm.expectRevert(BasePrivacyAccount.CallerNotEntryPoint.selector);
-        account.validateUserOp(op, bytes32(0), 0);
     }
 
     function test_sweep_rejectsNonOwner() public {

@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-/// Uniform shape every per-protocol 4337 account exposes under the
-/// multi-protocol privacy paymaster.
+/// Uniform interface for 4337 accounts that can pay a PrivacyPaymaster with
+/// unshielded funds.
 ///
-/// The account is the security boundary for protocol-specific validation
-/// (proof, nullifier, recipient, ...). The paymaster is the security
-/// boundary for economic checks (gross >= priced max cost) and only
-/// trusts accounts it has explicitly whitelisted via `setApprovedSender`.
+/// Implementors guarantee that any `unshieldCalldata` that `previewUnshield`
+/// approves MUST result in the paymaster being credited with the predicted `feeToken`
+/// and `feeAmount` when `execute` is called with the same `unshieldCalldata`. Failing
+/// to do so enables griefing of the paymaster.
 interface IPrivacyAccount {
     struct Call {
         address target;
         bytes data;
     }
 
-    /// Performs all protocol-specific validation of the single-unshield
-    /// blob and returns what the paymaster needs to price the operation:
+    /// Performs all protocol-specific validation of the unshield
+    /// blob.
     ///
     /// @param unshieldCalldata The exact calldata the account will
     /// forward to the unshield protocol.
-    /// @return destination The final user recipient of the unshielded funds.
     /// @return feeToken The ERC20 (or `address(0)` for native) being
     /// unshielded and credited to the paymaster.
-    /// @return grossAmount The amount of `feeToken` the paymaster will
-    /// receive.
+    /// @return feeAmount The amount of `feeToken` being unshielded to the
+    /// paymaster.
     ///
-    /// Reverts on any invalid unshield (wrong selector, wrong recipient,
-    /// bad proof, spent nullifier, ...).
-    function evaluateUserOperation(
+    /// @dev Reverts on any invalid unshield.
+    function previewUnshield(
         bytes calldata unshieldCalldata
-    )
-        external
-        view
-        returns (address destination, address feeToken, uint256 grossAmount);
+    ) external view returns (address feeToken, uint256 feeAmount);
 
-    /// Execute a single unshield (must succeed) followed by best-effort
-    /// tail calls (return values ignored, reverts isolated to emits).
+    /// Executes an unshield followed by the tail calls.
+    ///
+    /// @dev The unshield call MUST always be called first, and MUST result in
+    /// the predicted `feeToken` and `feeAmount` being credited to the paymaster.
+    ///
+    /// @dev The `tail` calls MUST NOT cause the entire transaction to revert if
+    /// any fail.
     function execute(
         bytes calldata unshieldCalldata,
         Call[] calldata tail

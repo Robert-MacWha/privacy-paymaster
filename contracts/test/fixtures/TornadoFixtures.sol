@@ -1,36 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-// Hardcoded fixtures for the fork tests. These are snapshots captured once
-// from an offline note/proof generation run; the fork is pinned to FORK_BLOCK
-// so they remain valid across runs.
-//
-// PAYMASTER_EXPECTED is derived from CREATE(vm.addr(DEPLOYER_PK), 0) — the
-// address the paymaster lands at when deployed normally from DEPLOYER_PK at
-// nonce 0. The proofs commit to this address as the recipient public input.
-// Because CREATE addresses depend only on deployer + nonce (not bytecode),
-// this address is stable across contract changes.
-//
-// Only regenerate proofs if PAYMASTER_EXPECTED, FORK_BLOCK, or
-// TORNADO_INSTANCE_ADDR changes.
-//
-// Procedure:
-//   1. Pick FORK_BLOCK (recent, stable).
-//   2. Compute PAYMASTER_EXPECTED:
-//      cast compute-address --nonce 0 $(cast wallet address --private-key 0xA11CE)
-//   3. Run the note/proof tooling in the sibling repo with:
-//      - instance   = TORNADO_INSTANCE_ADDR at FORK_BLOCK
-//      - recipient1 = PAYMASTER_EXPECTED
-//      - recipient2 = OTHER_RECIPIENT
-//      - relayer=0, fee=0, refund=0
-//   4. Tool outputs: commitment, nullifierHash, post-deposit root, proof1, proof2.
-//      Paste below.
-
+// Hardcoded fixtures for TornadoAccount tests.
 library TornadoFixtures {
     // ----- Network / fork config -----
     uint256 internal constant FORK_BLOCK = 10_000_000;
 
-    // Sepolia EntryPoint v0.9.0. Canonical deterministic address.
+    // Sepolia EntryPoint v0.9.0.
     address internal constant ENTRY_POINT_ADDR =
         0x433709009B8330FDa32311DF1C2AFA402eD8D009;
 
@@ -38,33 +14,35 @@ library TornadoFixtures {
     address internal constant TORNADO_INSTANCE_ADDR =
         address(0x8cc930096B4Df705A007c4A039BDFA1320Ed2508);
 
-    // Deployer key used by the fork tests and Deploy.s.sol smoke test.
+    // Forge account testing PK.
     uint256 internal constant DEPLOYER_PK =
         uint256(
             0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
         );
 
-    address internal constant PAYMASTER_OWNER =
-        address(uint160(0xa0Ee7A142d267C1f36714E4a8F75612F20a79720));
-
-    address internal constant PAYMASTER_EXPECTED =
-        address(0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba);
-
-    address internal constant FEE_RECIPIENT = address(0xC0FFEE);
-
     // ----- Note / proof snapshots -----
+    // These values should be generated using client code and be valid notes
+    // and proofs for the above Tornado instance.
+
+    // Arbitrary fields proof snapshot must commit to for tests.
+    address payable internal constant RECIPIENT = payable(address(0xC0FFEE));
+    address payable internal constant PAYMASTER =
+        payable(address(0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba));
+    uint256 internal constant FEE = 50000000000000000;
+
+    // Proof snapshot
     bytes32 internal constant COMMITMENT =
-        hex"002ca4079049b78ba6d0fa185af6fab3e5868a9c5efd9de72e38eb41d386c847";
+        hex"132fa39bc9676c0c89d567ff63a45dd862858f8f75cf8768130c5aa62dae2a5b";
     bytes32 internal constant ROOT =
-        hex"26185ed9908360acfc552156f957705ca08c5bc81ca698c6156f28d6df5f0b25";
+        hex"187ee16dba9869f6319ffd06cc5d7dc0d6b20b66735362bb30bb0b3fe62667bc";
     bytes32 internal constant NULLIFIER_HASH =
-        hex"2918dd5a43f0c8e8b04caba605f9a0707fbcefc3501d36166e2b9bdf8f43dfcf";
+        hex"08f0366544886c7bb64a8cedd2ec9c78043c69b4c8de426de82b5702c6f5a1e2";
 
-    // Proof with recipient == PAYMASTER_EXPECTED.
-    bytes internal constant PROOF_PM =
-        hex"29cd95071990e0259ae051c38d514bedc5a806499b756c41305d5e5586fea72e0c1bc67709d7e0f781fb3e1216317b9416ca67fc3ed64aa51b5385e586855a1e25f3c862335c0aeaae466fb72b434a5f1a6d923707ce56855527fff057d3b8250d19e38dd65bc6378ebf993ff4fd1188b042c9d9fcd8ee5249f322439cc47c430a6a2cece205031a96086f701fddcdc2c637a89c389fbfc3483168f33decf54411145d8b3c633422d8c1cc51c19871c825acf02d0778437e4eb7076f8d763b780f49d4e20b1981d49aa22c92ce02594805ffef68db29a14f5b47b5ac798fbb390825a8e65c0b8f07e6500dbf6cf81816826aeedeb1ada1b5281630f449e66826";
+    // Proof with recipient == RECIPIENT, relayer == PAYMASTER, and fee == FEE.
+    bytes internal constant PROOF_VALID =
+        hex"216d0abb7a01ca6b27b698a3c8071c73d01753bf6e4fb60d9c3e7578624df9c20c5aafbebf3338aa9981cc421a0cc97b3cfe48aff4ad9e8d081b7d1a3715fb0521abfb49e30d5b82de52a37992b204a642a8adfe89e0c8e7f1b13ca84e034a1e1a3302fd6ce746f4688eae970ead8dc728cafa84de6ab2af51bcd1d4bf70e058197d081399eb8759fcbf97d6beb5f15a599c9edb3cc13884ebfe082a87f94bcd1afddca40c3ba493fa7807c3d031ab8a3b70437cd0a2651bf2a29d73753776612928c8c8836949883a0f86e4606a2873ab0abc4660159c8f6ee2c2100f01226e269ae5b493d4744009e26a349ed7de832ec6b2a86416f31b3fee5f473c41341c";
 
-    // Proof with recipient != PAYMASTER_EXPECTED.
-    bytes internal constant PROOF_OTHER =
-        hex"302fb9ad3668adf46cf39111d098276b0e467b19d6f65b16c34be322bd70422c0cd86b0db3707ed4532a9e2e71dc2ca1c109dce0ede152dfbbfa200a9abbaa320811bee5ac4c2c6bff03efd4acfba9c8875969d496f4594370c3afe52e05e55f184e8d89d8ccae6450bf3adafc77430b0f594b9ee85db75434e45025c1a1ca521314e7da9f0d45d190eea359ec6abba26d959e8975fa8234d4a18abc045d663c21c5b1c29b17e3f1c9b60691ed5ee2ac217f4e0acfb82e5239a963749d36d351250a02dc8ce4da1e71fe7b863a8ba4ecfe6251c966f21d12d912e59895fc69c80d9281d4ebc88127fc8773bd7b2b4d6a1903792429727e982498ea492d451266";
+    // Proof with recipient == RECIPIENT, relayer != PAYMASTER, and fee == FEE.
+    bytes internal constant PROOF_INVALID_PAYMASTER =
+        hex"1e9002cb0f96d956ce2a43ae7eaffb8de8f0f6969dce95fa8606e5a17dce24fa2071b9bbb261990b226a78dacedd24d498aa0565ba1f9e9e6c515d357053e7d3001ed2c6892ffada51cf5efbf0d98f5a16c890e5f2add286fa6fc325a4b9901e0715872ed4deef1b7721822179314a71f3ab56f0cf17cdbc8dccdc992497d8c60758ab3a515259b70b409f2e0790ae293f8598a7508397ad6ff549b737b0eda60446d0596c02043b195c8394365cba007b2a2a28ffcc84b830d012d8a552d5b810fddff0f57c01c39dec425142f40ad974b31a824e5b8bbf5844a8338e23cecf2c4856c4108f320a30594c1a2f9bf6464d520c80209d3c4b48c55c51cdb81a35";
 }

@@ -15,14 +15,29 @@ contract StakePaymaster is Script {
         uint256 depositAmount = vm.envUint("DEPOSIT_AMOUNT");
         uint256 deployerPk = vm.envUint("DEPLOYER_PK");
 
+        stake(
+            paymasterAddr,
+            stakeAmount,
+            unstakeDelay,
+            depositAmount,
+            deployerPk
+        );
+    }
+
+    function stake(
+        address paymasterAddr,
+        uint256 stakeAmount,
+        uint32 unstakeDelay,
+        uint256 depositAmount,
+        uint256 deployerPk
+    ) public {
         PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
         IEntryPoint entryPoint = paymaster.entryPoint();
 
-        vm.startBroadcast(deployerPk);
-
+        vm.broadcast(deployerPk);
         paymaster.addStake{value: stakeAmount}(unstakeDelay);
-        entryPoint.depositTo{value: depositAmount}(paymasterAddr);
 
-        vm.stopBroadcast();
+        vm.broadcast(deployerPk);
+        entryPoint.depositTo{value: depositAmount}(paymasterAddr);
     }
 }

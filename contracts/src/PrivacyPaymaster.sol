@@ -42,23 +42,9 @@ contract PrivacyPaymaster is BasePaymaster {
     error SenderMismatch(address expected, address actual);
     error FeeTokenNotAllowed(address feeToken);
     error InvalidSelector();
-    error InsufficientGross(uint256 required, uint256 gross);
+    error InsufficientFee(uint256 required, uint256 fee);
     error PaymasterAndDataTooShort();
     error OnlySelf();
-
-    // ----- CONSTANTS -----
-
-    /// Safety markup on top of worst-case gas cost at validation time.
-    /// Covers oracle slippage, tail gas envelope, postOp overhead. 15%.
-    uint16 public constant FEE_MARKUP_BPS = 1500;
-
-    /// Gas units added on top of `actualGasCost` in postOp to reimburse
-    /// the paymaster's own postOp work. Matches the legacy constant.
-    uint256 public constant POST_OP_GAS_OVERHEAD = 1e5;
-
-    /// Hard cap on gas forwarded to a native-ETH destination during
-    /// settlement. Prevents hostile destinations from griefing.
-    uint256 public constant FORWARD_GAS_BUDGET = 1e4;
 
     // ----- IMMUTABLES -----
     IStaticOracle public immutable ORACLE;
@@ -140,85 +126,23 @@ contract PrivacyPaymaster is BasePaymaster {
             (bytes, IPrivacyAccount.Call[])
         );
 
-        // Perform protocol-specific validation and get the fee token + gross
-        // amount to be unshielded.
-        (
-            address destination,
-            address feeToken,
-            uint256 grossAmount
-        ) = IPrivacyAccount(userOp.sender).evaluateUserOperation(
-                unshieldCalldata
-            );
-
+        (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
+            .previewUnshield(unshieldCalldata);
         if (!feeTokenAllowed[feeToken]) {
             revert FeeTokenNotAllowed(feeToken);
         }
 
-        // Economic check priced via the TWAP oracle + safety markup.
-        uint256 weiBudget = (maxCost * (10_000 + FEE_MARKUP_BPS)) / 10_000;
+        // Economic check priced via the TWAP oracle
         uint256 requiredInToken = (feeToken == address(0) || feeToken == WETH)
-            ? weiBudget
-            : _quoteWeiInToken(feeToken, weiBudget);
-        if (grossAmount < requiredInToken) {
-            revert InsufficientGross(requiredInToken, grossAmount);
+            ? maxCost
+            : _quoteWeiInToken(feeToken, maxCost);
+
+        if (feeAmount < requiredInToken) {
+            revert InsufficientFee(requiredInToken, feeAmount);
         }
 
-        context = abi.encode(feeToken, destination, grossAmount);
+        context = "";
         validationData = 0;
-    }
-
-    function _postOp(
-        IPaymaster.PostOpMode,
-        bytes calldata context,
-        uint256 actualGasCost,
-        uint256 actualUserOpFeePerGas
-    ) internal override {
-        (address feeToken, address destination, uint256 gross) = abi.decode(
-            context,
-            (address, address, uint256)
-        );
-
-        uint256 weiCost = actualGasCost +
-            (POST_OP_GAS_OVERHEAD * actualUserOpFeePerGas);
-        uint256 feeInToken = (feeToken == address(0) || feeToken == WETH)
-            ? weiCost
-            : _quoteWeiInToken(feeToken, weiCost);
-        if (feeInToken > gross) feeInToken = gross; // safety cap
-
-        uint256 remainder = gross - feeInToken;
-
-        //? Best-effort forward. Reverting here would roll back the
-        //? unshield inside the EntryPoint frame while the paymaster
-        //? stays charged for gas - a grief vector. Hostile destinations
-        //? cause the paymaster to silently absorb the remainder.
-        if (feeToken == address(0)) {
-            // aderyn-ignore-next-line(unchecked-low-level-call)
-            (bool ok, ) = payable(destination).call{
-                value: remainder,
-                gas: FORWARD_GAS_BUDGET
-            }("");
-            ok; // swallow
-        } else {
-            // SafeERC20 reverts on failure; wrap in an external self-call
-            // + try/catch so the no-revert-in-postOp invariant holds.
-            try this.safeTransferSelf(feeToken, destination, remainder) {
-                // ok
-            } catch {
-                // swallow — paymaster absorbs the remainder
-            }
-        }
-    }
-
-    /// Self-only reentry used by `_postOp` to run SafeERC20.safeTransfer
-    /// inside a try/catch frame. `onlySelf` makes this unreachable to
-    /// anyone but the paymaster itself.
-    function safeTransferSelf(
-        address token,
-        address to,
-        uint256 amount
-    ) external {
-        if (msg.sender != address(this)) revert OnlySelf();
-        IERC20(token).safeTransfer(to, amount);
     }
 
     // ----- Internals -----

@@ -7,27 +7,15 @@ import {
 
 import {BasePrivacyAccount} from "./BasePrivacyAccount.sol";
 
-/// Singleton 4337 account bound to a Privacy Pools v2 Entrypoint.
-///
-/// SKELETON: `evaluateUserOperation` is a disabled placeholder — the
-/// full 0xbow Withdrawal/RelayData/WithdrawProof struct layouts and
-/// public-input indexing are not yet vendored into the repo, so the
-/// account MUST NOT be added to the paymaster's `approvedSenders`
-/// whitelist until that validator body lands.
 contract PrivacyPoolsAccount is BasePrivacyAccount {
     constructor(
         IEntryPoint _entryPoint,
         address _entrypoint
     ) BasePrivacyAccount(_entryPoint, _entrypoint) {}
 
-    function evaluateUserOperation(
+    function previewUnshield(
         bytes calldata /* unshieldCalldata */
-    )
-        external
-        view
-        override
-        returns (address destination, address feeToken, uint256 grossAmount)
-    {
+    ) external view override returns (address feeToken, uint256 feeAmount) {
         // TODO: once the Privacy Pools struct layout is vendored:
         //   - require selector == IEntrypoint.relay.selector
         //   - decode (Withdrawal w, WithdrawProof proof, uint256 sigScope)

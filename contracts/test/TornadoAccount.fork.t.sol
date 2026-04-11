@@ -12,15 +12,9 @@ import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 
-/// Unit tests for TornadoAccount.evaluateUserOperation.
-/// No paymaster deployment or EntryPoint funding needed — just the fork,
-/// the tornado instance, and the account. msg.sender is spoofed to simulate
-/// the paymaster calling in.
 contract TornadoAccountForkTest is Test {
     ITornadoInstance internal tornado;
     TornadoAccount internal account;
-    address payable internal paymaster =
-        payable(TornadoFixtures.PAYMASTER_EXPECTED);
     uint256 internal denomination;
 
     function setUp() public {
@@ -63,20 +57,20 @@ contract TornadoAccountForkTest is Test {
                 refund
             )
         );
-        vm.prank(paymaster);
-        account.evaluateUserOperation(cd);
+        vm.prank(TornadoFixtures.PAYMASTER);
+        account.previewUnshield(cd);
     }
 
     // ----- Tests -----
 
     function test_valid() public {
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            address(0xC0FFEE),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }
@@ -85,12 +79,12 @@ contract TornadoAccountForkTest is Test {
         bytes memory cd = abi.encodeCall(
             ITornadoInstance.withdraw,
             (
-                TornadoFixtures.PROOF_PM,
+                TornadoFixtures.PROOF_VALID,
                 TornadoFixtures.ROOT,
                 TornadoFixtures.NULLIFIER_HASH,
-                paymaster,
-                payable(address(1)),
-                0,
+                TornadoFixtures.RECIPIENT,
+                TornadoFixtures.PAYMASTER,
+                TornadoFixtures.FEE,
                 0
             )
         );
@@ -99,19 +93,19 @@ contract TornadoAccountForkTest is Test {
         cd[2] = 0xbe;
         cd[3] = 0xef;
         vm.expectRevert(TornadoAccount.InvalidSelector.selector);
-        vm.prank(paymaster);
-        account.evaluateUserOperation(cd);
+        vm.prank(TornadoFixtures.PAYMASTER);
+        account.previewUnshield(cd);
     }
 
     function test_invalidRecipient() public {
         vm.expectRevert(TornadoAccount.InvalidRecipient.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            payable(address(1)),
-            payable(address(1)),
-            0,
+            payable(address(0)),
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }
@@ -119,25 +113,38 @@ contract TornadoAccountForkTest is Test {
     function test_invalidRelayer() public {
         vm.expectRevert(TornadoAccount.InvalidRelayer.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0)),
+            TornadoFixtures.RECIPIENT,
+            payable(address(0xDEAD)),
+            TornadoFixtures.FEE,
+            0
+        );
+    }
+
+    function test_zeroFee() public {
+        vm.expectRevert(TornadoAccount.InvalidFee.selector);
+        _evaluate(
+            TornadoFixtures.PROOF_VALID,
+            TornadoFixtures.ROOT,
+            TornadoFixtures.NULLIFIER_HASH,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
             0,
             0
         );
     }
 
-    function test_nonZeroFee() public {
-        vm.expectRevert(TornadoAccount.NonZeroFee.selector);
+    function test_largeFee() public {
+        vm.expectRevert(TornadoAccount.InvalidFee.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            1,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            100 ether,
             0
         );
     }
@@ -145,34 +152,34 @@ contract TornadoAccountForkTest is Test {
     function test_nonZeroRefund() public {
         vm.expectRevert(TornadoAccount.NonZeroRefund.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(1)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             1
         );
     }
 
     function test_spentNullifier() public {
         tornado.withdraw(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
         vm.expectRevert(TornadoAccount.NullifierAlreadySpent.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }
@@ -180,40 +187,38 @@ contract TornadoAccountForkTest is Test {
     function test_unknownRoot() public {
         vm.expectRevert(TornadoAccount.UnknownRoot.selector);
         _evaluate(
-            TornadoFixtures.PROOF_PM,
+            TornadoFixtures.PROOF_VALID,
             bytes32(uint256(0xBEEF)),
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }
 
     function test_invalidProof() public {
-        bytes memory tampered = bytes.concat(TornadoFixtures.PROOF_PM);
-        tampered[tampered.length / 2] ^= 0x01;
         vm.expectRevert(TornadoAccount.InvalidProof.selector);
         _evaluate(
-            tampered,
+            TornadoFixtures.PROOF_INVALID_PAYMASTER,
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }
 
-    function test_proofForDifferentRecipient() public {
+    function test_invalidProofReverts() public {
         vm.expectRevert(TornadoAccount.InvalidProof.selector);
         _evaluate(
-            TornadoFixtures.PROOF_OTHER,
+            bytes("invalid proof"),
             TornadoFixtures.ROOT,
             TornadoFixtures.NULLIFIER_HASH,
-            paymaster,
-            payable(address(0xC0FFEE)),
-            0,
+            TornadoFixtures.RECIPIENT,
+            TornadoFixtures.PAYMASTER,
+            TornadoFixtures.FEE,
             0
         );
     }

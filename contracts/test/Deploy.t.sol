@@ -12,31 +12,27 @@ contract DeployScriptTest is Test {
         vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
         vm.deal(vm.addr(TornadoFixtures.DEPLOYER_PK), 1000 ether);
 
-        vm.setEnv("ENTRY_POINT", vm.toString(TornadoFixtures.ENTRY_POINT_ADDR));
-        vm.setEnv("DEPLOYER_PK", vm.toString(TornadoFixtures.DEPLOYER_PK));
-        vm.setEnv("WETH", vm.toString(address(0)));
-        vm.setEnv("STATIC_ORACLE", vm.toString(address(0)));
-        vm.setEnv("TWAP_PERIOD", "0");
+        address paymaster = new DeployPaymaster().deploy(
+            TornadoFixtures.ENTRY_POINT_ADDR,
+            address(0),
+            address(0),
+            0,
+            TornadoFixtures.DEPLOYER_PK
+        );
+        assertEq(paymaster, TornadoFixtures.PAYMASTER);
 
-        address paymaster = new DeployPaymaster().run();
-        assertEq(
+        new StakePaymaster().stake(
             paymaster,
-            TornadoFixtures.PAYMASTER_EXPECTED,
-            "wrong paymaster addr"
+            1 ether,
+            3600,
+            1 ether,
+            TornadoFixtures.DEPLOYER_PK
         );
 
-        vm.setEnv("PAYMASTER", vm.toString(paymaster));
-        vm.setEnv("STAKE_AMOUNT", "100");
-        vm.setEnv("UNSTAKE_DELAY", "3600");
-        vm.setEnv("DEPOSIT_AMOUNT", "100");
-
-        new StakePaymaster().run();
-
-        vm.setEnv(
-            "TORNADO_INSTANCE",
-            vm.toString(TornadoFixtures.TORNADO_INSTANCE_ADDR)
+        new DeployTornado().deploy(
+            paymaster,
+            TornadoFixtures.TORNADO_INSTANCE_ADDR,
+            TornadoFixtures.DEPLOYER_PK
         );
-
-        new DeployTornado().run();
     }
 }
