@@ -38,6 +38,8 @@
             pkgs.foundry
             pkgs.bun
             aderyn
+            pkgs.just
+            pkgs.sops
           ];
         };
       }

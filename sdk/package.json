@@ -9,6 +9,9 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "scripts": {
+    "test": "bun test"
+  },
   "dependencies": {
     "viem": "^2.47.12"
   }

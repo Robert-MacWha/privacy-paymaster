@@ -206,9 +206,6 @@ contract TornadoAccountForkTest is Test {
     }
 
     function test_proofForDifferentRecipient() public {
-        // PROOF_OTHER is valid but bound to OTHER_RECIPIENT. Submitting it
-        // with recipient=paymaster passes the early recipient check and must
-        // be rejected by the verifier (public inputs no longer match).
         vm.expectRevert(TornadoAccount.InvalidProof.selector);
         _evaluate(
             TornadoFixtures.PROOF_OTHER,

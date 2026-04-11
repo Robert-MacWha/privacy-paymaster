@@ -17,6 +17,9 @@ import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
 import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
+import {DeployPaymaster} from "../script/DeployPaymaster.s.sol";
+import {StakePaymaster} from "../script/StakePaymaster.s.sol";
+import {DeployTornado} from "../script/DeployTornado.s.sol";
 
 contract PrivacyPaymasterForkTest is Test {
     IEntryPoint internal entryPoint;
@@ -31,43 +34,37 @@ contract PrivacyPaymasterForkTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
+        vm.deal(vm.addr(TornadoFixtures.DEPLOYER_PK), 1000 ether);
 
         entryPoint = IEntryPoint(TornadoFixtures.ENTRY_POINT_ADDR);
         tornado = ITornadoInstance(TornadoFixtures.TORNADO_INSTANCE_ADDR);
         denomination = tornado.denomination();
-        account = new TornadoAccount(entryPoint, tornado, address(0));
 
-        //? Paymaster must land at the exact address the snapshot proofs
-        //? commit to (recipient public input). Use forge-std's
-        //? `deployCodeTo` to run the constructor in-place at a fixed
-        //? address — independent of bytecode changes, constructor args,
-        //? or deployer nonce. This means setUp no longer exercises
-        //? Deploy.s.sol; the script is instead smoke-tested separately.
-        deployCodeTo(
-            "PrivacyPaymaster.sol:PrivacyPaymaster",
-            abi.encode(
-                entryPoint,
-                TornadoFixtures.PAYMASTER_OWNER,
-                address(0),
-                address(0),
-                uint32(0)
-            ),
-            TornadoFixtures.PAYMASTER_EXPECTED
+        vm.setEnv("ENTRY_POINT", vm.toString(TornadoFixtures.ENTRY_POINT_ADDR));
+        vm.setEnv("DEPLOYER_PK", vm.toString(TornadoFixtures.DEPLOYER_PK));
+        vm.setEnv("WETH", vm.toString(address(0)));
+        vm.setEnv("STATIC_ORACLE", vm.toString(address(0)));
+        vm.setEnv("TWAP_PERIOD", "0");
+
+        address paymasterAddr = new DeployPaymaster().run();
+        paymaster = PrivacyPaymaster(payable(paymasterAddr));
+
+        vm.setEnv("PAYMASTER", vm.toString(paymasterAddr));
+        vm.setEnv("STAKE_AMOUNT", vm.toString(uint256(1 ether)));
+        vm.setEnv("UNSTAKE_DELAY", "3600");
+        vm.setEnv("DEPOSIT_AMOUNT", vm.toString(uint256(1 ether)));
+
+        new StakePaymaster().run();
+
+        vm.setEnv(
+            "TORNADO_INSTANCE",
+            vm.toString(TornadoFixtures.TORNADO_INSTANCE_ADDR)
         );
-        paymaster = PrivacyPaymaster(
-            payable(TornadoFixtures.PAYMASTER_EXPECTED)
-        );
 
-        // Whitelist the account.
-        vm.prank(TornadoFixtures.PAYMASTER_OWNER);
-        paymaster.setApprovedSender(address(account), true);
+        address tornadoAccountAddr = new DeployTornado().run();
+        account = TornadoAccount(tornadoAccountAddr);
 
-        // Fund paymaster's EntryPoint deposit.
-        vm.deal(address(this), 10 ether);
-        entryPoint.depositTo{value: 1 ether}(address(paymaster));
-
-        // Plant the known deposit matching COMMITMENT so the snapshot
-        // proofs verify against the post-deposit merkle root.
+        // Deposit snapshot note into tc instance for tests
         address depositor = address(0xDEADBEEF);
         vm.deal(depositor, denomination);
         vm.prank(depositor);
