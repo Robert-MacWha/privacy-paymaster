@@ -1,9 +1,10 @@
 import { Instance } from "prool";
-import { createPublicClient, createWalletClient, encodeFunctionData, http, parseAbi, type Address, type Hex } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
 import { createBundlerClient, entryPoint09Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
 import { PrivacyBundler } from "./src/privacyProtocolSmartAccount";
+import { TornadoBundler } from "./src/tornadoBundler";
 
 const SEPOLIA_RPC_URL: string = process.env.SEPOLIA_RPC_URL!;
 
@@ -35,7 +36,6 @@ const PROOF_VALID: Hex =
     "0x216d0abb7a01ca6b27b698a3c8071c73d01753bf6e4fb60d9c3e7578624df9c20c5aafbebf3338aa9981cc421a0cc97b3cfe48aff4ad9e8d081b7d1a3715fb0521abfb49e30d5b82de52a37992b204a642a8adfe89e0c8e7f1b13ca84e034a1e1a3302fd6ce746f4688eae970ead8dc728cafa84de6ab2af51bcd1d4bf70e058197d081399eb8759fcbf97d6beb5f15a599c9edb3cc13884ebfe082a87f94bcd1afddca40c3ba493fa7807c3d031ab8a3b70437cd0a2651bf2a29d73753776612928c8c8836949883a0f86e4606a2873ab0abc4660159c8f6ee2c2100f01226e269ae5b493d4744009e26a349ed7de832ec6b2a86416f31b3fee5f473c41341c";
 
 const tornadoAbi = parseAbi([
-    "function withdraw(bytes proof, bytes32 root, bytes32 nullifierHash, address recipient, address relayer, uint256 fee, uint256 refund)",
     "function deposit(bytes32 _commitment) external payable",
     "function denomination() external view returns(uint256)",
 ]);
@@ -74,27 +74,30 @@ try {
     console.log("Deposit tx:", hash);
 
     // Unshield via bundler
-    const unshieldCalldata = encodeFunctionData({
-        abi: tornadoAbi,
-        functionName: "withdraw",
-        args: [PROOF_VALID, ROOT, NULLIFIER_HASH, RECIPIENT, PAYMASTER, FEE, 0n],
-    });
-
-    const bundler = new PrivacyBundler(publicClient, bundlerClient, TORNADO_ACCOUNT, ENTRY_POINT);
+    const bundler = new TornadoBundler(new PrivacyBundler(publicClient, bundlerClient, TORNADO_ACCOUNT, ENTRY_POINT));
     console.log("Sending user operation to bundler...");
-    const userOpHash = await bundler.sendOperation({
-        unshieldCalldata,
-        tail: [],
-        paymaster: PAYMASTER,
-        callGasLimit: 1_500_000n,
-        verificationGasLimit: 500_000n,
-        preVerificationGas: 100_000n,
-        maxFeePerGas: 1000000000n,
-        maxPriorityFeePerGas: 1000000000n * 10n,
-        paymasterVerificationGasLimit: 300_000n,
-        paymasterPostOpGasLimit: 100_000n,
-        paymasterData: "0x",
-    });
+    const userOpHash = await bundler.sendWithdraw(
+        {
+            proof: PROOF_VALID,
+            root: ROOT,
+            nullifierHash: NULLIFIER_HASH,
+            recipient: RECIPIENT,
+            relayer: PAYMASTER,
+            fee: FEE,
+        },
+        {
+            tail: [],
+            paymaster: PAYMASTER,
+            callGasLimit: 1_500_000n,
+            verificationGasLimit: 500_000n,
+            preVerificationGas: 100_000n,
+            maxFeePerGas: 1000000000n,
+            maxPriorityFeePerGas: 1000000000n * 10n,
+            paymasterVerificationGasLimit: 300_000n,
+            paymasterPostOpGasLimit: 100_000n,
+            paymasterData: "0x",
+        },
+    );
 
     console.log("Waiting for user operation receipt...");
     const receipt = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash });

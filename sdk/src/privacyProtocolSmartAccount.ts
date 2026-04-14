@@ -21,8 +21,7 @@ const privacyAccountAbi = [
     },
 ] as const;
 
-export interface PrivacyOperation {
-    unshieldCalldata: Hex;
+export interface OperationInfo {
     tail: { target: Address; value: bigint; data: Hex }[];
     paymaster: Address;
     callGasLimit: bigint;
@@ -44,12 +43,13 @@ export class PrivacyBundler {
     ) { }
 
     async sendOperation(
-        op: PrivacyOperation,
+        unshieldCalldata: Hex,
+        op: OperationInfo,
     ): Promise<Hex> {
         const callData = encodeFunctionData({
             abi: privacyAccountAbi,
             functionName: "execute",
-            args: [op.unshieldCalldata, op.tail],
+            args: [unshieldCalldata, op.tail],
         });
 
         const nonce = await this.client.readContract({

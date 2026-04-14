@@ -1,4 +1,11 @@
 
+## Priorities
+
+1. User fund safety: The user should always be able to retain full custody of all their funds. Unshielded funds should be transferred from the privacy protocol to the user's destination address without passing through the paymaster's control. This mitigates any risk of bugs in the paymaster leading to loss of user funds.
+2. Paymaster fund safety: The paymaster should never be at risk of losing funds or being griefed by attackers. The paymaster must validate all proofs and be certain that it will receive a fee that covers the cost of validation before accepting a user operation.
+
+By following these two principles, we eliminate any user attack surface and minimize paymaster attack surface. Remaining risks are outlined in the next sections.
+
 ## Assumptions
 
 | Assumption                                           | Basis                                                                           | Risk                                                                                                 |
