@@ -40,4 +40,7 @@ contract StakePaymaster is Script {
         vm.broadcast(deployerPk);
         entryPoint.depositTo{value: depositAmount}(paymasterAddr);
     }
+
+    //? Ignore in forge coverage
+    function test() public {}
 }

@@ -40,4 +40,7 @@ contract DeployTornado is Script {
 
         return address(tornadoAccount);
     }
+
+    //? Ignore in forge coverage
+    function test() public {}
 }

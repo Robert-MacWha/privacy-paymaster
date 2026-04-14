@@ -38,4 +38,7 @@ contract DeployPaymaster is Script {
         );
         return address(paymaster);
     }
+
+    //? Ignore in forge coverage
+    function test() public {}
 }

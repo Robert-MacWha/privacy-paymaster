@@ -11,7 +11,6 @@ import {
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {BasePrivacyAccount} from "../src/accounts/BasePrivacyAccount.sol";
 import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
 import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
 import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
