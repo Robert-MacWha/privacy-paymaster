@@ -8,9 +8,6 @@ import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {
-    IPaymaster
-} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
-import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -39,12 +36,9 @@ contract PrivacyPaymaster is BasePaymaster {
 
     // ----- ERRORS -----
     error SenderNotApproved(address sender);
-    error SenderMismatch(address expected, address actual);
     error FeeTokenNotAllowed(address feeToken);
     error InvalidSelector(bytes4 selector);
     error InsufficientFee(uint256 required, uint256 fee);
-    error PaymasterAndDataTooShort();
-    error OnlySelf();
 
     // ----- IMMUTABLES -----
     IStaticOracle public immutable ORACLE;
@@ -77,10 +71,10 @@ contract PrivacyPaymaster is BasePaymaster {
     receive() external payable {}
 
     // ----- ADMIN -----
-    // aderyn-ignore-next-line(centralization-risk)
     function setApprovedSender(
         address sender,
         bool approved
+        // aderyn-ignore-next-line(centralization-risk)
     ) external onlyOwner {
         approvedSenders[sender] = approved;
         emit SenderApproved(sender, approved);
@@ -151,8 +145,11 @@ contract PrivacyPaymaster is BasePaymaster {
         address feeToken,
         uint256 weiAmount
     ) internal view returns (uint256 tokenAmount) {
+        // aderyn-ignore-next-line
+        uint128 amount = uint128(weiAmount);
+
         (tokenAmount, ) = ORACLE.quoteAllAvailablePoolsWithTimePeriod(
-            uint128(weiAmount),
+            amount,
             WETH,
             feeToken,
             TWAP_PERIOD
