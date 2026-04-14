@@ -41,7 +41,7 @@ contract PrivacyPaymaster is BasePaymaster {
     error SenderNotApproved(address sender);
     error SenderMismatch(address expected, address actual);
     error FeeTokenNotAllowed(address feeToken);
-    error InvalidSelector();
+    error InvalidSelector(bytes4 selector);
     error InsufficientFee(uint256 required, uint256 fee);
     error PaymasterAndDataTooShort();
     error OnlySelf();
@@ -119,7 +119,8 @@ contract PrivacyPaymaster is BasePaymaster {
 
         bool isValidSelector = bytes4(userOp.callData[:4]) ==
             IPrivacyAccount.execute.selector;
-        if (!isValidSelector) revert InvalidSelector();
+        if (!isValidSelector)
+            revert InvalidSelector(bytes4(userOp.callData[:4]));
 
         (bytes memory unshieldCalldata, ) = abi.decode(
             userOp.callData[4:],

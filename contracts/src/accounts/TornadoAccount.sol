@@ -11,10 +11,10 @@ import {IVerifier} from "../interfaces/IVerifier.sol";
 
 contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----
-    error InvalidSelector();
-    error InvalidRecipient();
-    error InvalidRelayer();
-    error InvalidFee();
+    error InvalidSelector(bytes4 selector);
+    error InvalidRecipient(address recipient);
+    error InvalidRelayer(address relayer);
+    error InvalidFee(uint256 fee);
     error NonZeroRefund();
     error NullifierAlreadySpent();
     error UnknownRoot();
@@ -54,10 +54,10 @@ contract TornadoAccount is BasePrivacyAccount {
         address paymaster = msg.sender;
         Decoded memory d = _decode(unshieldCalldata);
 
-        if (d.recipient == address(0)) revert InvalidRecipient();
-        if (d.relayer != paymaster) revert InvalidRelayer();
-        if (d.fee == 0) revert InvalidFee();
-        if (d.fee > TORNADO_INSTANCE_DENOMINATION) revert InvalidFee();
+        if (d.recipient == address(0)) revert InvalidRecipient(d.recipient);
+        if (d.relayer != paymaster) revert InvalidRelayer(d.relayer);
+        if (d.fee == 0) revert InvalidFee(d.fee);
+        if (d.fee > TORNADO_INSTANCE_DENOMINATION) revert InvalidFee(d.fee);
         if (d.refund != 0) revert NonZeroRefund();
 
         if (TORNADO_INSTANCE.nullifierHashes(d.nullifierHash))
@@ -83,7 +83,7 @@ contract TornadoAccount is BasePrivacyAccount {
         bytes calldata unshieldCalldata
     ) internal pure returns (Decoded memory d) {
         if (bytes4(unshieldCalldata[:4]) != ITornadoInstance.withdraw.selector)
-            revert InvalidSelector();
+            revert InvalidSelector(bytes4(unshieldCalldata[:4]));
 
         (
             d.proof,

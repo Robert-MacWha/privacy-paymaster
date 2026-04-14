@@ -13,6 +13,8 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@pimlico/alto": "^0.0.20",
+    "prool": "^0.2.4",
     "viem": "^2.47.12"
   }
 }

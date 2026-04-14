@@ -35,7 +35,6 @@ contract DeployTornado is Script {
             tornadoInstance,
             address(0)
         );
-
         vm.broadcast(deployerPk);
         paymaster.setApprovedSender(address(tornadoAccount), true);
 

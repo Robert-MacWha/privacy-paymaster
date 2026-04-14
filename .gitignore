@@ -2,3 +2,5 @@
 .env
 .envrc
 .direnv
+
+anvil-state.json

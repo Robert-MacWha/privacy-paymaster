@@ -28,6 +28,8 @@ library TornadoFixtures {
     address payable internal constant RECIPIENT = payable(address(0xC0FFEE));
     address payable internal constant PAYMASTER =
         payable(address(0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba));
+    address payable internal constant TORNADO_ACCOUNT =
+        payable(address(0xdD14776222FeF5FfAF9F8f4c62653d011CE63A1F));
     uint256 internal constant FEE = 50000000000000000;
 
     // Proof snapshot

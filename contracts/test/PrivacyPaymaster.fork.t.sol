@@ -114,6 +114,34 @@ contract PrivacyPaymasterForkTest is Test {
         );
     }
 
+    function test_invalidSelector() public {
+        bytes memory cd = abi.encodeCall(
+            ITornadoInstance.withdraw,
+            (
+                TornadoFixtures.PROOF_VALID,
+                TornadoFixtures.ROOT,
+                TornadoFixtures.NULLIFIER_HASH,
+                payable(TornadoFixtures.RECIPIENT),
+                payable(TornadoFixtures.PAYMASTER),
+                TornadoFixtures.FEE,
+                0
+            )
+        );
+        // Corrupt the selector to make it invalid.
+        cd[0] = 0xde;
+        cd[1] = 0xad;
+        cd[2] = 0xbe;
+        cd[3] = 0xef;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PrivacyPaymaster.InvalidSelector.selector,
+                bytes4(0xDEADBEEF)
+            )
+        );
+        vm.prank(TornadoFixtures.PAYMASTER);
+        account.previewUnshield(cd);
+    }
+
     function test_sweep() public {
         // Fund the paymaster directly, then sweep to a fresh recipient.
         vm.deal(address(paymaster), 3 ether);

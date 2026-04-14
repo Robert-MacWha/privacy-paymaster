@@ -1,72 +1,56 @@
 anvil_url := "http://localhost:8545"
-alto_url  := "http://localhost:4337"
 
 entry_point  := "0x433709009B8330FDa32311DF1C2AFA402eD8D009"
 tornado_addr := "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508"
-commitment   := "0x1291259ce38518ac740a92829a0c40c0928398db467fa1f2a90776d360cab1ee"
-
+paymaster_addr    := "0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba"
 deployer_pk       := "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
-deployer_addr     := "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"
-paymaster_addr    := "YOUR_PAYMASTER_ADDR"
-tornado_acct_addr := "YOUR_TORNADO_ACCOUNT_ADDR"
+# Fresh executor/utility addresses (not Anvil defaults, to avoid EIP-7702 delegations on Sepolia)
+executor_addr     := "0x8dEe56a37D5d7E6dedcbf09865b42d4e8c4ae74a"
+utility_addr      := "0xe567a07c0a9D289A26B20582B3c3c05b97e07492"
 
-# Anvil default funded key (used for funding and cast sends)
-executor_key := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-
-dev:
+# Generate a state dump from Anvil with the Paymaster and 4337 accounts deployed
+# for testing purposes.
+generate-state:
     #!/usr/bin/env bash
-    trap 'kill 0' EXIT
-    just anvil &
-    sleep 2
-    just alto
+    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000 --dump-state anvil-state.json --chain-id 31337 &
+    ANVIL_PID=$!
+    trap 'kill $ANVIL_PID 2>/dev/null' EXIT
+    sleep 1
 
-# Deploy contracts + wire test state against a running anvil fork.
-# Run this once after `just anvil` before executing the TypeScript E2E test.
-setup-e2e:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Fund deployer (it has no ETH on the Sepolia fork)
-    cast send --rpc-url {{anvil_url}} --private-key {{executor_key}} \
-        {{deployer_addr}} --value 1ether
-    # Deploy PrivacyPaymaster (nonce 0 → paymaster_addr) and TornadoAccount
-    # (nonce 1 → tornado_acct_addr). Deployer == PAYMASTER_OWNER so the script
-    # also calls setApprovedSender automatically.
+    cd contracts
+
     ENTRY_POINT={{entry_point}} \
-    TORNADO_INSTANCE={{tornado_addr}} \
-    PAYMASTER_OWNER={{deployer_addr}} \
-    DEPLOYER_PK={{deployer_pk}} \
-    WETH=0x0000000000000000000000000000000000000000 \
-    STATIC_ORACLE=0x0000000000000000000000000000000000000000 \
+    WETH="0x0000000000000000000000000000000000000000" \
+    STATIC_ORACLE="0x0000000000000000000000000000000000000000" \
     TWAP_PERIOD=0 \
-    forge script contracts/script/DeployPrivacy.s.sol \
-        --rpc-url {{anvil_url}} --broadcast
-    # Fund paymaster's EntryPoint deposit
-    cast send --rpc-url {{anvil_url}} --private-key {{executor_key}} \
-        --value 1ether {{entry_point}} "depositTo(address)" {{paymaster_addr}}
-    # Plant the tornado deposit that the snapshot proofs verify against
-    cast send --rpc-url {{anvil_url}} --private-key {{executor_key}} \
-        --value 1ether {{tornado_addr}} "deposit(bytes32)" {{commitment}}
+    DEPLOYER_PK={{deployer_pk}} \
+    forge script script/DeployPaymaster.s.sol \
+        --fork-url {{anvil_url}} \
+        --broadcast \
+    
+    PAYMASTER={{paymaster_addr}} \
+    STAKE_AMOUNT=1000000000000000000 \
+    UNSTAKE_DELAY=3600 \
+    DEPOSIT_AMOUNT=1000000000000000000 \
+    TORNADO_INSTANCE={{tornado_addr}} \
+    DEPLOYER_PK={{deployer_pk}} \
+    forge script script/StakePaymaster.s.sol \
+        --fork-url {{anvil_url}} \
+        --broadcast
 
-# Start services, deploy, and run the TypeScript E2E suite end-to-end.
-e2e:
-    #!/usr/bin/env bash
-    trap 'kill 0' EXIT
-    just anvil &
-    sleep 2
-    just alto &
-    sleep 2
-    just setup-e2e
-    cd sdk && bun test
+    PAYMASTER={{paymaster_addr}} \
+    TORNADO_INSTANCE={{tornado_addr}} \
+    DEPLOYER_PK={{deployer_pk}} \
+    forge script script/DeployTornado.s.sol \
+        --fork-url {{anvil_url}} \
+        --broadcast
 
-anvil:
-    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000
+    cast send --rpc-url {{anvil_url}} \
+        --private-key {{deployer_pk}} \
+        {{executor_addr}} \
+        --value 100ether
 
-alto:
-    bunx @pimlico/alto \
-        --entrypoints {{entry_point}} \
-        --executor-private-keys {{executor_key}} \
-        --utility-private-key {{executor_key}} \
-        --min-entity-stake 1 \
-        --min-entity-unstake-delay 1 \
-        --rpc-url {{anvil_url}} \
-        --port 4337
+    cast send --rpc-url {{anvil_url}} \
+        --private-key {{deployer_pk}} \
+        {{utility_addr}} \
+        --value 100ether

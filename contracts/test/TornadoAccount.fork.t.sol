@@ -92,13 +92,23 @@ contract TornadoAccountForkTest is Test {
         cd[1] = 0xad;
         cd[2] = 0xbe;
         cd[3] = 0xef;
-        vm.expectRevert(TornadoAccount.InvalidSelector.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TornadoAccount.InvalidSelector.selector,
+                bytes4(0xDEADBEEF)
+            )
+        );
         vm.prank(TornadoFixtures.PAYMASTER);
         account.previewUnshield(cd);
     }
 
     function test_invalidRecipient() public {
-        vm.expectRevert(TornadoAccount.InvalidRecipient.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TornadoAccount.InvalidRecipient.selector,
+                address(0)
+            )
+        );
         _evaluate(
             TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
@@ -111,7 +121,12 @@ contract TornadoAccountForkTest is Test {
     }
 
     function test_invalidRelayer() public {
-        vm.expectRevert(TornadoAccount.InvalidRelayer.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TornadoAccount.InvalidRelayer.selector,
+                address(0xDEAD)
+            )
+        );
         _evaluate(
             TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
@@ -124,7 +139,9 @@ contract TornadoAccountForkTest is Test {
     }
 
     function test_zeroFee() public {
-        vm.expectRevert(TornadoAccount.InvalidFee.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(TornadoAccount.InvalidFee.selector, 0)
+        );
         _evaluate(
             TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
@@ -137,7 +154,12 @@ contract TornadoAccountForkTest is Test {
     }
 
     function test_largeFee() public {
-        vm.expectRevert(TornadoAccount.InvalidFee.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TornadoAccount.InvalidFee.selector,
+                100 ether
+            )
+        );
         _evaluate(
             TornadoFixtures.PROOF_VALID,
             TornadoFixtures.ROOT,
