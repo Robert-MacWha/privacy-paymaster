@@ -1,10 +1,10 @@
 import { Instance } from "prool";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
-import { createBundlerClient, entryPoint09Address } from "viem/account-abstraction";
+import { entryPoint09Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
-import { PrivacyBundler } from "./src/privacyProtocolSmartAccount";
-import { TornadoBundler } from "./src/tornadoBundler";
+import { TornadoBuilder } from "./src/tornadoBuilder";
+import { BundlerClient } from "./src/bundlerClient";
 
 const SEPOLIA_RPC_URL: string = process.env.SEPOLIA_RPC_URL!;
 
@@ -16,7 +16,7 @@ const TORNADO_INSTANCE_ADDR = "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508" as Ad
 // Arbitrary deployer key for txns.
 const DEPLOYER_PK = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" as Hex;
 
-// Bundler executor and utility keys (not Anvil defaults, to avoid EIP-7702 delegations on Sepolia) 
+// Bundler executor and utility keys (not Anvil defaults, to avoid EIP-7702 delegations on Sepolia)
 const EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
 const UTILITY_PK = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
 
@@ -47,10 +47,7 @@ try {
         chain: anvil,
         transport: http(execRpcUrl),
     });
-    const bundlerClient = createBundlerClient({
-        chain: anvil,
-        transport: http(bundlerRpcUrl),
-    })
+    const bundlerClient = new BundlerClient(anvil, http(bundlerRpcUrl), ENTRY_POINT);
     const walletClient = createWalletClient({
         chain: anvil,
         transport: http(execRpcUrl),
@@ -74,20 +71,11 @@ try {
     console.log("Deposit tx:", hash);
 
     // Unshield via bundler
-    const bundler = new TornadoBundler(new PrivacyBundler(publicClient, bundlerClient, TORNADO_ACCOUNT, ENTRY_POINT));
-    console.log("Sending user operation to bundler...");
-    const userOpHash = await bundler.sendWithdraw(
-        {
-            proof: PROOF_VALID,
-            root: ROOT,
-            nullifierHash: NULLIFIER_HASH,
-            recipient: RECIPIENT,
-            relayer: PAYMASTER,
-            fee: FEE,
-        },
-        {
-            tail: [],
-            paymaster: PAYMASTER,
+    const op = await new TornadoBuilder(TORNADO_ACCOUNT)
+        .withPaymaster(PAYMASTER)
+        .withWithdraw(PROOF_VALID, ROOT, NULLIFIER_HASH, RECIPIENT, PAYMASTER, FEE)
+        .withGas({
+            type: 'manual',
             callGasLimit: 1_500_000n,
             verificationGasLimit: 500_000n,
             preVerificationGas: 100_000n,
@@ -95,12 +83,11 @@ try {
             maxPriorityFeePerGas: 1000000000n * 10n,
             paymasterVerificationGasLimit: 300_000n,
             paymasterPostOpGasLimit: 100_000n,
-            paymasterData: "0x",
-        },
-    );
+        }).build(publicClient, bundlerClient);
+    const userOpHash = await bundlerClient.sendUserOperation(op);
 
     console.log("Waiting for user operation receipt...");
-    const receipt = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash });
+    await bundlerClient.waitForUserOperationReceipt(userOpHash);
 
     const [recipientBalance, paymasterBalance] = await Promise.all([
         publicClient.getBalance({ address: RECIPIENT }),
