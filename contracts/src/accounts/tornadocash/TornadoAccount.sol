@@ -5,9 +5,9 @@ import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
-import {BasePrivacyAccount} from "./BasePrivacyAccount.sol";
-import {ITornadoInstance} from "../interfaces/ITornadoInstance.sol";
-import {IVerifier} from "../interfaces/IVerifier.sol";
+import {BasePrivacyAccount} from "../BasePrivacyAccount.sol";
+import {ITornadoInstance} from "./interfaces/ITornadoInstance.sol";
+import {IVerifier} from "./interfaces/IVerifier.sol";
 
 contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----

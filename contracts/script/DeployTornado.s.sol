@@ -6,8 +6,10 @@ import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
-import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
+import {TornadoAccount} from "../src/accounts/tornadocash/TornadoAccount.sol";
+import {
+    ITornadoInstance
+} from "../src/accounts/tornadocash/interfaces/ITornadoInstance.sol";
 
 contract DeployTornado is Script {
     function run() external {

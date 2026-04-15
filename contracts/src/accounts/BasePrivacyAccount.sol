@@ -9,7 +9,7 @@ import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
-import {IPrivacyAccount} from "./IPrivacyAccount.sol";
+import {IPrivacyAccount} from "../interfaces/IPrivacyAccount.sol";
 
 /// Abstract PrivacyAccount implementing universal `execute` logic.
 abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {

@@ -15,7 +15,7 @@ import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IPrivacyAccount} from "./accounts/IPrivacyAccount.sol";
+import {IPrivacyAccount} from "./interfaces/IPrivacyAccount.sol";
 import {IStaticOracle} from "./interfaces/IStaticOracle.sol";
 
 /// Singleton multi-protocol privacy paymaster.

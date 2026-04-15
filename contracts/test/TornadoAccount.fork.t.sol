@@ -7,8 +7,10 @@ import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
-import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
-import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
+import {TornadoAccount} from "../src/accounts/tornadocash/TornadoAccount.sol";
+import {
+    ITornadoInstance
+} from "../src/accounts/tornadocash/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 

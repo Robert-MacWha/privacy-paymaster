@@ -11,9 +11,11 @@ import {
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {TornadoAccount} from "../src/accounts/TornadoAccount.sol";
-import {IPrivacyAccount} from "../src/accounts/IPrivacyAccount.sol";
-import {ITornadoInstance} from "../src/interfaces/ITornadoInstance.sol";
+import {IPrivacyAccount} from "../src/interfaces/IPrivacyAccount.sol";
+import {TornadoAccount} from "../src/accounts/tornadocash/TornadoAccount.sol";
+import {
+    ITornadoInstance
+} from "../src/accounts/tornadocash/interfaces/ITornadoInstance.sol";
 
 import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 import {DeployPaymaster} from "../script/DeployPaymaster.s.sol";
