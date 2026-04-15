@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -12,13 +16,27 @@
       self,
       nixpkgs,
       nixpkgs-unstable,
+      rust-overlay,
       flake-utils,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ rust-overlay.overlays.default ];
+        };
         unstable = nixpkgs-unstable.legacyPackages.${system};
+
+        rustToolchain = pkgs.rust-bin.stable."1.93.0".default.override {
+          extensions = [
+            "rust-src"
+            "llvm-tools"
+          ];
+          targets = [ "wasm32-unknown-unknown" ];
+        };
+
+        rustfmtNightly = pkgs.rust-bin.nightly.latest.rustfmt;
 
         aderyn = pkgs.stdenv.mkDerivation {
           pname = "aderyn";
@@ -34,13 +52,25 @@
             install -Dm755 aderyn $out/bin/aderyn
           '';
         };
+
       in
       {
         devShells.default = pkgs.mkShell {
           packages = [
-            unstable.foundry
+            # Rust
+            rustToolchain
+            rustfmtNightly
+            pkgs.rust-analyzer
+
+            # JS / WASM
             pkgs.bun
+            pkgs.binaryen
+            pkgs.wasm-pack
+
+            # Solidity
+            unstable.foundry
             aderyn
+
             pkgs.just
             pkgs.sops
           ];

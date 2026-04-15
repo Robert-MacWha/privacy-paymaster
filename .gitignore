@@ -4,3 +4,7 @@
 .direnv
 
 anvil-state.json
+
+# Added by cargo
+
+/target

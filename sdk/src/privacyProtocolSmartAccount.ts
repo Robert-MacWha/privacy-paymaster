@@ -76,7 +76,6 @@ export class PrivacyBundler {
                     paymasterPostOpGasLimit: toHex(op.paymasterPostOpGasLimit),
                     paymasterData: op.paymasterData,
                     signature: "0x",
-
                 },
                 this.entryPoint,
             ]
