@@ -14,9 +14,19 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    IUniswapV3Factory
+} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import {
+    OracleLibrary
+} from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 import {IPrivacyAccount} from "./interfaces/IPrivacyAccount.sol";
-import {IStaticOracle} from "./interfaces/IStaticOracle.sol";
+
+struct FeeToken {
+    bool allowed;
+    address pool;
+}
 
 /// Singleton multi-protocol privacy paymaster.
 ///
@@ -41,13 +51,13 @@ contract PrivacyPaymaster is BasePaymaster {
     error InsufficientFee(uint256 required, uint256 fee);
 
     // ----- IMMUTABLES -----
-    IStaticOracle public immutable ORACLE;
+    IUniswapV3Factory public immutable FACTORY;
     address public immutable WETH;
     uint32 public immutable TWAP_PERIOD;
 
     // ----- STATE -----
     mapping(address => bool) public approvedSenders;
-    mapping(address => bool) public feeTokenAllowed;
+    mapping(address => FeeToken) public feeTokens;
 
     // ----- EVENTS -----
     event SenderApproved(address indexed sender, bool approved);
@@ -55,17 +65,18 @@ contract PrivacyPaymaster is BasePaymaster {
 
     // ----- CONSTRUCTOR -----
     constructor(
-        IEntryPoint __entryPoint,
-        address owner,
-        IStaticOracle _oracle,
+        IEntryPoint _entryPoint,
+        address _owner,
+        IUniswapV3Factory _factory,
         address _weth,
         uint32 _twapPeriod
-    ) BasePaymaster(__entryPoint, owner) {
-        ORACLE = _oracle;
+    ) BasePaymaster(_entryPoint, _owner) {
+        FACTORY = _factory;
         WETH = _weth;
         TWAP_PERIOD = _twapPeriod;
-        // Native ETH is always an allowed fee "token".
-        feeTokenAllowed[address(0)] = true;
+
+        // Native ETH is always allowed
+        feeTokens[address(0)] = FeeToken({allowed: true, pool: address(0)});
     }
 
     receive() external payable {}
@@ -80,13 +91,18 @@ contract PrivacyPaymaster is BasePaymaster {
         emit SenderApproved(sender, approved);
     }
 
-    // aderyn-ignore-next-line(centralization-risk)
-    function setFeeToken(address token, bool allowed) external onlyOwner {
-        feeTokenAllowed[token] = allowed;
+    function setFeeToken(
+        address token,
+        uint24 uniswapFee,
+        bool allowed
+        // aderyn-ignore-next-line(centralization-risk)
+    ) external onlyOwner {
+        address pool;
         if (allowed && token != address(0) && token != WETH) {
-            require(ORACLE.isPairSupported(token, WETH), "pair not supported");
+            pool = FACTORY.getPool(token, WETH, uniswapFee);
+            require(pool != address(0), "pool not supported");
         }
-
+        feeTokens[token] = FeeToken({allowed: allowed, pool: pool});
         emit FeeTokenSet(token, allowed);
     }
 
@@ -94,6 +110,12 @@ contract PrivacyPaymaster is BasePaymaster {
     function sweep(address payable to) external onlyOwner {
         (bool ok, ) = to.call{value: address(this).balance}("");
         require(ok, "sweep failed");
+    }
+
+    // aderyn-ignore-next-line(centralization-risk)
+    function sweepERC20(IERC20 token, address to) external onlyOwner {
+        uint256 balance = token.balanceOf(address(this));
+        token.safeTransfer(to, balance);
     }
 
     // ----- BasePaymaster -----
@@ -123,15 +145,11 @@ contract PrivacyPaymaster is BasePaymaster {
 
         (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
             .previewUnshield(unshieldCalldata);
-        if (!feeTokenAllowed[feeToken]) {
+        if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }
 
-        // Economic check priced via the TWAP oracle
-        uint256 requiredInToken = (feeToken == address(0) || feeToken == WETH)
-            ? maxCost
-            : _quoteWeiInToken(feeToken, maxCost);
-
+        uint256 requiredInToken = _quoteWeiInToken(feeToken, maxCost);
         if (feeAmount < requiredInToken) {
             revert InsufficientFee(requiredInToken, feeAmount);
         }
@@ -145,14 +163,19 @@ contract PrivacyPaymaster is BasePaymaster {
         address feeToken,
         uint256 weiAmount
     ) internal view returns (uint256 tokenAmount) {
-        // aderyn-ignore-next-line
-        uint128 amount = uint128(weiAmount);
+        if (feeToken == WETH) return weiAmount;
+        if (feeToken == address(0)) return weiAmount; // Native ETH
 
-        (tokenAmount, ) = ORACLE.quoteAllAvailablePoolsWithTimePeriod(
-            amount,
-            WETH,
-            feeToken,
-            TWAP_PERIOD
-        );
+        uint128 weiAmount128 = uint128(weiAmount);
+
+        address pool = feeTokens[feeToken].pool;
+        (int24 meanTick, ) = OracleLibrary.consult(pool, TWAP_PERIOD);
+        return
+            OracleLibrary.getQuoteAtTick(
+                meanTick,
+                weiAmount128,
+                feeToken,
+                WETH
+            );
     }
 }

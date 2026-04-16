@@ -143,6 +143,8 @@ contract Succeeder is ITornadoInstance {
     ) external override {}
     receive() external payable {}
     fallback() external payable {}
+
+    function test() external {}
 }
 
 /// ITornadoInstance stub — denomination returns 1 ether, all other calls revert.
@@ -179,4 +181,6 @@ contract CallReverter is ITornadoInstance {
     fallback() external payable {
         revert("CallReverter: nope");
     }
+
+    function test() external {}
 }
