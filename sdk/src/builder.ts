@@ -1,6 +1,6 @@
 import type { Address, Hex, PublicClient, UserOperation } from 'viem';
-import type { GasConfig } from './types';
-import type { BundlerClient } from './bundlerClient';
+import type { GasConfig } from './types.js';
+import type { BundlerClient } from './bundlerClient.js';
 
 const entryPointAbi = [
   {
@@ -95,18 +95,17 @@ export class UserOperationBuilder {
     };
 
     if (this.gas.type === 'auto') {
-      const [est, maxFee, maxPriorityFee] = await Promise.all([
+      const [est, gasPrice] = await Promise.all([
         bundlerClient.estimateUserOperationGas(skeleton),
-        rpcClient.getGasPrice(),
-        rpcClient.estimateMaxPriorityFeePerGas(),
+        bundlerClient.getUserOperationGasPrice(),
       ]);
-      skeleton.callGasLimit = est.callGasLimit;
-      skeleton.verificationGasLimit = est.verificationGasLimit;
-      skeleton.preVerificationGas = est.preVerificationGas;
-      skeleton.maxFeePerGas = maxFee;
-      skeleton.maxPriorityFeePerGas = maxPriorityFee;
-      skeleton.paymasterVerificationGasLimit = est.paymasterVerificationGasLimit;
-      skeleton.paymasterPostOpGasLimit = est.paymasterPostOpGasLimit;
+      skeleton.callGasLimit = BigInt(est.callGasLimit);
+      skeleton.verificationGasLimit = BigInt(est.verificationGasLimit);
+      skeleton.preVerificationGas = BigInt(est.preVerificationGas);
+      skeleton.maxFeePerGas = BigInt(gasPrice.fast.maxFeePerGas);
+      skeleton.maxPriorityFeePerGas = BigInt(gasPrice.fast.maxPriorityFeePerGas);
+      skeleton.paymasterVerificationGasLimit = est.paymasterVerificationGasLimit ? BigInt(est.paymasterVerificationGasLimit) : undefined;
+      skeleton.paymasterPostOpGasLimit = est.paymasterPostOpGasLimit ? BigInt(est.paymasterPostOpGasLimit) : undefined;
     } else {
       skeleton.callGasLimit = this.gas.callGasLimit;
       skeleton.verificationGasLimit = this.gas.verificationGasLimit;
