@@ -1,6 +1,6 @@
 anvil_url := "http://localhost:8545"
 
-entry_point  := "0x433709009B8330FDa32311DF1C2AFA402eD8D009"
+entry_point  := "0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108"
 tornado_addr := "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508"
 paymaster_addr    := "0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba"
 private_key       := "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
