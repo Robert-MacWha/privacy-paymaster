@@ -23,8 +23,7 @@ contract TornadoAccount is BasePrivacyAccount {
     /// ----- IMMUTABLES -----
     // The token address for this TC instance, or address(0) for ETH instances.
     address public immutable FEE_TOKEN;
-    ITornadoInstance immutable TORNADO_INSTANCE =
-        ITornadoInstance(address(this));
+    ITornadoInstance immutable TORNADO_INSTANCE;
     uint256 public immutable TORNADO_INSTANCE_DENOMINATION;
 
     constructor(
@@ -103,7 +102,7 @@ contract TornadoAccount is BasePrivacyAccount {
         bytes memory proof,
         bytes32 root,
         bytes32 nullifierHash,
-        address paymaster,
+        address recipient,
         address relayer,
         uint256 fee,
         uint256 refund
@@ -115,7 +114,7 @@ contract TornadoAccount is BasePrivacyAccount {
                 [
                     uint256(root),
                     uint256(nullifierHash),
-                    uint256(uint160(paymaster)),
+                    uint256(uint160(recipient)),
                     uint256(uint160(relayer)),
                     fee,
                     refund
