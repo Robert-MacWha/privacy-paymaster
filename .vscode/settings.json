@@ -1,7 +1,0 @@
-{
-    "solidity.packageDefaultDependenciesDirectory": "lib",
-    "solidity.remappings": [
-        "@account-abstraction/=lib/account-abstraction/"
-    ],
-    "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
-}
