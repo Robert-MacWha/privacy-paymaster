@@ -35,7 +35,7 @@ contract PrivacyPaymasterForkTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
-        vm.deal(vm.addr(TornadoFixtures.DEPLOYER_PK), 1000 ether);
+        vm.deal(vm.addr(TornadoFixtures.PRIVATE_KEY), 1000 ether);
 
         entryPoint = IEntryPoint(TornadoFixtures.ENTRY_POINT_ADDR);
         tornado = ITornadoInstance(TornadoFixtures.TORNADO_INSTANCE_ADDR);
@@ -46,7 +46,7 @@ contract PrivacyPaymasterForkTest is Test {
             address(0),
             address(0),
             0,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
         paymaster = PrivacyPaymaster(payable(paymasterAddr));
 
@@ -55,13 +55,13 @@ contract PrivacyPaymasterForkTest is Test {
             1 ether,
             3600,
             1 ether,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
 
         address tornadoAccountAddr = new DeployTornado().deploy(
             paymasterAddr,
             TornadoFixtures.TORNADO_INSTANCE_ADDR,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
         account = TornadoAccount(tornadoAccountAddr);
 
@@ -150,7 +150,7 @@ contract PrivacyPaymasterForkTest is Test {
         address payable to = payable(address(0xBEEF));
         uint256 toBefore = to.balance;
 
-        vm.prank(vm.addr(TornadoFixtures.DEPLOYER_PK));
+        vm.prank(vm.addr(TornadoFixtures.PRIVATE_KEY));
         paymaster.sweep(to);
 
         assertEq(address(paymaster).balance, 0, "paymaster not drained");

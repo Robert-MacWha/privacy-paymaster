@@ -10,14 +10,14 @@ import {TornadoFixtures} from "./fixtures/TornadoFixtures.sol";
 contract DeployScriptTest is Test {
     function test_deploy_script_runs() public {
         vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
-        vm.deal(vm.addr(TornadoFixtures.DEPLOYER_PK), 1000 ether);
+        vm.deal(vm.addr(TornadoFixtures.PRIVATE_KEY), 1000 ether);
 
         address paymaster = new DeployPaymaster().deploy(
             TornadoFixtures.ENTRY_POINT_ADDR,
             address(0),
             address(0),
             0,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
         assertEq(paymaster, TornadoFixtures.PAYMASTER);
 
@@ -26,13 +26,13 @@ contract DeployScriptTest is Test {
             1 ether,
             3600,
             1 ether,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
 
         new DeployTornado().deploy(
             paymaster,
             TornadoFixtures.TORNADO_INSTANCE_ADDR,
-            TornadoFixtures.DEPLOYER_PK
+            TornadoFixtures.PRIVATE_KEY
         );
     }
 }

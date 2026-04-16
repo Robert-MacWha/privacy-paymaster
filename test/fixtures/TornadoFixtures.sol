@@ -15,7 +15,7 @@ library TornadoFixtures {
         address(0x8cc930096B4Df705A007c4A039BDFA1320Ed2508);
 
     // Forge account testing PK.
-    uint256 internal constant DEPLOYER_PK =
+    uint256 internal constant PRIVATE_KEY =
         uint256(
             0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
         );

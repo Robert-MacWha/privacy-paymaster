@@ -13,14 +13,14 @@ contract StakePaymaster is Script {
         uint256 stakeAmount = vm.envUint("STAKE_AMOUNT");
         uint32 unstakeDelay = uint32(vm.envUint("UNSTAKE_DELAY"));
         uint256 depositAmount = vm.envUint("DEPOSIT_AMOUNT");
-        uint256 deployerPk = vm.envUint("DEPLOYER_PK");
+        uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
         stake(
             paymasterAddr,
             stakeAmount,
             unstakeDelay,
             depositAmount,
-            deployerPk
+            privateKey
         );
     }
 
@@ -29,16 +29,20 @@ contract StakePaymaster is Script {
         uint256 stakeAmount,
         uint32 unstakeDelay,
         uint256 depositAmount,
-        uint256 deployerPk
+        uint256 privateKey
     ) public {
         PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
         IEntryPoint entryPoint = paymaster.entryPoint();
 
-        vm.broadcast(deployerPk);
-        paymaster.addStake{value: stakeAmount}(unstakeDelay);
+        if (stakeAmount > 0) {
+            vm.broadcast(privateKey);
+            paymaster.addStake{value: stakeAmount}(unstakeDelay);
+        }
 
-        vm.broadcast(deployerPk);
-        entryPoint.depositTo{value: depositAmount}(paymasterAddr);
+        if (depositAmount > 0) {
+            vm.broadcast(privateKey);
+            entryPoint.depositTo{value: depositAmount}(paymasterAddr);
+        }
     }
 
     //? Ignore in forge coverage

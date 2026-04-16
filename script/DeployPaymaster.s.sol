@@ -16,9 +16,9 @@ contract DeployPaymaster is Script {
         address factory = vm.envAddress("FACTORY");
         address weth = vm.envAddress("WETH");
         uint32 twapPeriod = uint32(vm.envUint("TWAP_PERIOD"));
-        uint256 deployerPk = vm.envUint("DEPLOYER_PK");
+        uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
-        deploy(entryPointAddr, factory, weth, twapPeriod, deployerPk);
+        deploy(entryPointAddr, factory, weth, twapPeriod, privateKey);
     }
 
     function deploy(
@@ -26,11 +26,11 @@ contract DeployPaymaster is Script {
         address factory,
         address weth,
         uint32 twapPeriod,
-        uint256 deployerPk
+        uint256 privateKey
     ) public returns (address) {
-        address owner = vm.addr(deployerPk);
+        address owner = vm.addr(privateKey);
 
-        vm.broadcast(deployerPk);
+        vm.broadcast(privateKey);
         PrivacyPaymaster paymaster = new PrivacyPaymaster(
             IEntryPoint(entryPoint),
             owner,

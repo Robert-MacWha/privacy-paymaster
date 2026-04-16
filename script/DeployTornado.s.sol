@@ -15,15 +15,15 @@ contract DeployTornado is Script {
     function run() external {
         address paymasterAddr = vm.envAddress("PAYMASTER");
         address tornadoInstanceAddr = vm.envAddress("TORNADO_INSTANCE");
-        uint256 deployerPk = vm.envUint("DEPLOYER_PK");
+        uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
-        deploy(paymasterAddr, tornadoInstanceAddr, deployerPk);
+        deploy(paymasterAddr, tornadoInstanceAddr, privateKey);
     }
 
     function deploy(
         address paymasterAddr,
         address tornadoInstanceAddr,
-        uint256 deployerPk
+        uint256 privateKey
     ) public returns (address) {
         PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
         IEntryPoint entryPoint = paymaster.entryPoint();
@@ -31,13 +31,13 @@ contract DeployTornado is Script {
             tornadoInstanceAddr
         );
 
-        vm.broadcast(deployerPk);
+        vm.broadcast(privateKey);
         TornadoAccount tornadoAccount = new TornadoAccount(
             entryPoint,
             tornadoInstance,
             address(0)
         );
-        vm.broadcast(deployerPk);
+        vm.broadcast(privateKey);
         paymaster.setApprovedSender(address(tornadoAccount), true);
 
         return address(tornadoAccount);

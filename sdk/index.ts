@@ -14,7 +14,7 @@ const ENTRY_POINT = entryPoint09Address;
 const TORNADO_INSTANCE_ADDR = "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508" as Address;
 
 // Arbitrary deployer key for txns.
-const DEPLOYER_PK = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" as Hex;
+const PRIVATE_KEY = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" as Hex;
 
 // Bundler executor and utility keys (not Anvil defaults, to avoid EIP-7702 delegations on Sepolia)
 const EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
@@ -52,7 +52,7 @@ try {
         chain: anvil,
         transport: http(execRpcUrl),
     });
-    const account = privateKeyToAccount(DEPLOYER_PK);
+    const account = privateKeyToAccount(PRIVATE_KEY);
 
     // Shield tc commitment
     const denomination = await publicClient.readContract({
