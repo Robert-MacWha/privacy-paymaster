@@ -131,7 +131,7 @@ impl UserOperationBuilder {
             signature,
         };
 
-        match &self.gas {
+        match self.gas {
             GasConfig::Auto => {
                 let est = provider.estimate_gas(&skeleton).await?;
                 let max_fee = provider.suggest_max_fee_per_gas().await?;
@@ -156,13 +156,13 @@ impl UserOperationBuilder {
                 paymaster_verification_gas_limit,
                 paymaster_post_op_gas_limit,
             } => {
-                skeleton.call_gas_limit = *call_gas_limit;
-                skeleton.verification_gas_limit = *verification_gas_limit;
-                skeleton.pre_verification_gas = *pre_verification_gas;
-                skeleton.max_fee_per_gas = *max_fee_per_gas;
-                skeleton.max_priority_fee_per_gas = *max_priority_fee_per_gas;
-                skeleton.paymaster_verification_gas_limit = Some(*paymaster_verification_gas_limit);
-                skeleton.paymaster_post_op_gas_limit = Some(*paymaster_post_op_gas_limit);
+                skeleton.call_gas_limit = call_gas_limit;
+                skeleton.verification_gas_limit = verification_gas_limit;
+                skeleton.pre_verification_gas = pre_verification_gas;
+                skeleton.max_fee_per_gas = max_fee_per_gas;
+                skeleton.max_priority_fee_per_gas = max_priority_fee_per_gas;
+                skeleton.paymaster_verification_gas_limit = Some(paymaster_verification_gas_limit);
+                skeleton.paymaster_post_op_gas_limit = Some(paymaster_post_op_gas_limit);
             }
         }
 
@@ -170,7 +170,6 @@ impl UserOperationBuilder {
     }
 }
 
-/// Convert a U256 to u128, saturating at the max value.
 fn u256_to_u128(v: U256) -> u128 {
     v.saturating_to()
 }

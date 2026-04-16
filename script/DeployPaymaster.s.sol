@@ -28,12 +28,9 @@ contract DeployPaymaster is Script {
         uint32 twapPeriod,
         uint256 privateKey
     ) public returns (address) {
-        address owner = vm.addr(privateKey);
-
         vm.broadcast(privateKey);
         PrivacyPaymaster paymaster = new PrivacyPaymaster(
             IEntryPoint(entryPoint),
-            owner,
             IUniswapV3Factory(factory),
             weth,
             twapPeriod

@@ -66,11 +66,10 @@ contract PrivacyPaymaster is BasePaymaster {
     // ----- CONSTRUCTOR -----
     constructor(
         IEntryPoint _entryPoint,
-        address _owner,
         IUniswapV3Factory _factory,
         address _weth,
         uint32 _twapPeriod
-    ) BasePaymaster(_entryPoint, _owner) {
+    ) BasePaymaster(_entryPoint) {
         FACTORY = _factory;
         WETH = _weth;
         TWAP_PERIOD = _twapPeriod;

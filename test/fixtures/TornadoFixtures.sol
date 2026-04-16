@@ -6,9 +6,9 @@ library TornadoFixtures {
     // ----- Network / fork config -----
     uint256 internal constant FORK_BLOCK = 10_000_000;
 
-    // Sepolia EntryPoint v0.9.0.
+    // Sepolia EntryPoint v0.8.0.
     address internal constant ENTRY_POINT_ADDR =
-        0x433709009B8330FDa32311DF1C2AFA402eD8D009;
+        0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108;
 
     // Sepolia TC 1 ETH instance.
     address internal constant TORNADO_INSTANCE_ADDR =
