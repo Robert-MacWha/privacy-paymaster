@@ -1,6 +1,6 @@
 import { Instance } from "prool";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
-import { entryPoint09Address } from "viem/account-abstraction";
+import { entryPoint08Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
 import { TornadoBuilder } from "./src/tornadoBuilder";
@@ -8,7 +8,7 @@ import { BundlerClient } from "./src/bundlerClient";
 
 const SEPOLIA_RPC_URL: string = process.env.SEPOLIA_RPC_URL!;
 
-const ENTRY_POINT = entryPoint09Address;
+const ENTRY_POINT = entryPoint08Address;
 
 // Address the tornado AA20 account is deployed at in the Anvil state dump
 const TORNADO_INSTANCE_ADDR = "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508" as Address;
@@ -81,7 +81,7 @@ try {
             preVerificationGas: 100_000n,
             maxFeePerGas: 1000000000n,
             maxPriorityFeePerGas: 1000000000n * 10n,
-            paymasterVerificationGasLimit: 300_000n,
+            paymasterVerificationGasLimit: 500_000n,
             paymasterPostOpGasLimit: 100_000n,
         }).build(publicClient, bundlerClient);
     const userOpHash = await bundlerClient.sendUserOperation(op);
@@ -124,7 +124,7 @@ async function startServers(rpcUrl: string): Promise<{
 
     const bundlerServer = Instance.alto({
         rpcUrl: executionRpcUrl,
-        entrypoints: [entryPoint09Address],
+        entrypoints: [ENTRY_POINT],
         executorPrivateKeys: [EXECUTOR_PK],
         utilityPrivateKey: UTILITY_PK,
         safeMode: false,
