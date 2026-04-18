@@ -5,11 +5,13 @@ import {Script} from "forge-std/Script.sol";
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
-import {TornadoAccount} from "../src/accounts/tornadocash/TornadoAccount.sol";
+import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
+import {
+    TornadoAccount
+} from "../contracts/accounts/tornadocash/TornadoAccount.sol";
 import {
     ITornadoInstance
-} from "../src/accounts/tornadocash/interfaces/ITornadoInstance.sol";
+} from "../contracts/accounts/tornadocash/interfaces/ITornadoInstance.sol";
 
 contract DeployTornado is Script {
     function run() external {

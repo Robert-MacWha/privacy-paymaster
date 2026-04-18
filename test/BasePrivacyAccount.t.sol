@@ -7,12 +7,14 @@ import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
-import {IPrivacyAccount} from "../src/interfaces/IPrivacyAccount.sol";
-import {BasePrivacyAccount} from "../src/accounts/BasePrivacyAccount.sol";
-import {TornadoAccount} from "../src/accounts/tornadocash/TornadoAccount.sol";
+import {IPrivacyAccount} from "../contracts/interfaces/IPrivacyAccount.sol";
+import {BasePrivacyAccount} from "../contracts/accounts/BasePrivacyAccount.sol";
+import {
+    TornadoAccount
+} from "../contracts/accounts/tornadocash/TornadoAccount.sol";
 import {
     ITornadoInstance
-} from "../src/accounts/tornadocash/interfaces/ITornadoInstance.sol";
+} from "../contracts/accounts/tornadocash/interfaces/ITornadoInstance.sol";
 
 contract BasePrivacyAccountTest is Test {
     // Stub that accepts any call without reverting.

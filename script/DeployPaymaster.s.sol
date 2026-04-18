@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
+import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 import {
     IUniswapV3Factory
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";

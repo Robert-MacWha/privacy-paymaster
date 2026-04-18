@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PrivacyPaymaster} from "../src/PrivacyPaymaster.sol";
+import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 
 contract StakePaymaster is Script {
     function run() external {
