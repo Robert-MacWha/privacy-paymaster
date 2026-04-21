@@ -17,8 +17,6 @@ generate-state:
     trap 'kill $ANVIL_PID 2>/dev/null' EXIT
     sleep 1
 
-    cd contracts
-
     ENTRY_POINT={{entry_point}} \
     WETH="0x0000000000000000000000000000000000000000" \
     STATIC_ORACLE="0x0000000000000000000000000000000000000000" \

@@ -20,6 +20,9 @@ import {
 import {
     OracleLibrary
 } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import {
+    EIP7702Utils
+} from "@openzeppelin/contracts/account/utils/EIP7702Utils.sol";
 
 import {IPrivacyAccount} from "./interfaces/IPrivacyAccount.sol";
 
@@ -56,11 +59,11 @@ contract PrivacyPaymaster is BasePaymaster {
     uint32 public immutable TWAP_PERIOD;
 
     // ----- STATE -----
-    mapping(address => bool) public approvedSenders;
+    mapping(address => bool) public approvedImpls;
     mapping(address => FeeToken) public feeTokens;
 
     // ----- EVENTS -----
-    event SenderApproved(address indexed sender, bool approved);
+    event ImplApproved(address indexed impl, bool approved);
     event FeeTokenSet(address indexed token, bool allowed);
 
     // ----- CONSTRUCTOR -----
@@ -81,13 +84,13 @@ contract PrivacyPaymaster is BasePaymaster {
     receive() external payable {}
 
     // ----- ADMIN -----
-    function setApprovedSender(
-        address sender,
+    function setApprovedImpl(
+        address impl,
         bool approved
         // aderyn-ignore-next-line(centralization-risk)
     ) external onlyOwner {
-        approvedSenders[sender] = approved;
-        emit SenderApproved(sender, approved);
+        approvedImpls[impl] = approved;
+        emit ImplApproved(impl, approved);
     }
 
     function setFeeToken(
@@ -128,7 +131,8 @@ contract PrivacyPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        if (!approvedSenders[userOp.sender]) {
+        address senderImpl = EIP7702Utils.fetchDelegate(userOp.sender);
+        if (!approvedImpls[senderImpl]) {
             revert SenderNotApproved(userOp.sender);
         }
 

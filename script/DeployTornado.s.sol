@@ -40,7 +40,7 @@ contract DeployTornado is Script {
             address(0)
         );
         vm.broadcast(privateKey);
-        paymaster.setApprovedSender(address(tornadoAccount), true);
+        paymaster.setApprovedImpl(address(tornadoAccount), true);
 
         return address(tornadoAccount);
     }

@@ -66,6 +66,7 @@
             pkgs.bun
             pkgs.binaryen
             pkgs.wasm-pack
+            pkgs.nodejs_22
 
             # Solidity
             unstable.foundry

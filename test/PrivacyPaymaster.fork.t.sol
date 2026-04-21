@@ -31,6 +31,9 @@ contract PrivacyPaymasterForkTest is Test {
     PrivacyPaymaster internal paymaster;
     uint256 internal denomination;
 
+    uint256 constant SENDER_PK = 0xBADDAD;
+    address internal sender;
+
     uint128 internal constant PM_VERIFICATION_GAS = 300_000;
     uint128 internal constant PM_POST_OP_GAS = 100_000;
     address internal constant BUNDLER = address(0xB0773);
@@ -72,6 +75,11 @@ contract PrivacyPaymasterForkTest is Test {
         vm.deal(depositor, denomination);
         vm.prank(depositor);
         tornado.deposit{value: denomination}(TornadoFixtures.COMMITMENT);
+
+        // Pre-fun and delegate sender
+        sender = vm.addr(SENDER_PK);
+        vm.deal(sender, 1 ether);
+        vm.signAndAttachDelegation(address(account), SENDER_PK);
     }
 
     // ----- Tests -----
@@ -180,8 +188,8 @@ contract PrivacyPaymasterForkTest is Test {
         uint256 fee,
         uint256 refund
     ) internal view returns (PackedUserOperation memory op) {
-        op.sender = address(account);
-        op.nonce = entryPoint.getNonce(address(account), 0);
+        op.sender = sender;
+        op.nonce = entryPoint.getNonce(sender, 0);
         op.initCode = "";
 
         bytes memory unshieldCalldata = abi.encodeCall(

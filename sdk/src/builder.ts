@@ -1,4 +1,4 @@
-import type { Address, Hex, PublicClient, UserOperation } from 'viem';
+import type { Address, Hex, PublicClient, SignedAuthorization, UserOperation } from 'viem';
 import type { GasConfig } from './types.js';
 import type { BundlerClient } from './bundlerClient.js';
 
@@ -17,6 +17,7 @@ const entryPointAbi = [
 
 export class UserOperationBuilder {
   private calldata: Hex = '0x';
+  private authorization?: SignedAuthorization<number>;
   private paymaster?: Address;
   private paymasterData?: Hex;
   private signature: Hex = '0x';
@@ -65,6 +66,11 @@ export class UserOperationBuilder {
     return this;
   }
 
+  withAuthorization(auth: SignedAuthorization<number>): this {
+    this.authorization = auth;
+    return this;
+  }
+
   async build(
     rpcClient: PublicClient,
     bundlerClient: BundlerClient,
@@ -77,6 +83,7 @@ export class UserOperationBuilder {
     });
 
     const skeleton: UserOperation = {
+      authorization: this.authorization,
       sender: this.sender,
       nonce,
       factory: this.factory,

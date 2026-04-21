@@ -19,6 +19,7 @@ const PRIVATE_KEY = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff
 // Bundler executor and utility keys (not Anvil defaults, to avoid EIP-7702 delegations on Sepolia)
 const EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
 const UTILITY_PK = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
+const SENDER_PK = "0x836132a4ed09fa3c72a24d9536dafab266e39151f6c95208d057b8b44890da56" as Hex;
 
 // Pre-selected tornadocash public inputs
 const RECIPIENT = "0x0000000000000000000000000000000000C0FFEE" as Address;
@@ -40,6 +41,7 @@ const tornadoAbi = parseAbi([
     "function denomination() external view returns(uint256)",
 ]);
 
+console.log("Starting servers...");
 const { execRpcUrl, bundlerRpcUrl, stop } = await startServers(SEPOLIA_RPC_URL);
 
 try {
@@ -55,6 +57,7 @@ try {
     const account = privateKeyToAccount(PRIVATE_KEY);
 
     // Shield tc commitment
+    console.log("Depositing to Tornado Cash...");
     const denomination = await publicClient.readContract({
         address: TORNADO_INSTANCE_ADDR,
         abi: tornadoAbi,
@@ -70,10 +73,21 @@ try {
     });
     console.log("Deposit tx:", hash);
 
+    const senderAccount = privateKeyToAccount(SENDER_PK);
+    const senderClient = createWalletClient({
+        chain: anvil,
+        transport: http(execRpcUrl),
+        account: senderAccount,
+    });
+    const authorization = await senderClient.signAuthorization({
+        contractAddress: TORNADO_ACCOUNT,
+    });
+
     // Unshield via bundler
-    const op = await new TornadoBuilder(TORNADO_ACCOUNT)
+    const op = await new TornadoBuilder(senderAccount.address)
         .withPaymaster(PAYMASTER)
         .withWithdraw(PROOF_VALID, ROOT, NULLIFIER_HASH, RECIPIENT, PAYMASTER, FEE)
+        .withAuthorization(authorization)
         .withGas({
             type: 'manual',
             callGasLimit: 1_500_000n,
@@ -98,6 +112,9 @@ try {
     console.assert(recipientBalance === expectedRecipient, `Recipient balance wrong: expected ${expectedRecipient}, got ${recipientBalance}`);
     console.assert(paymasterBalance === FEE, `Paymaster balance wrong: expected ${FEE}, got ${paymasterBalance}`);
     console.log("Balances OK: recipient", recipientBalance, "paymaster", paymasterBalance);
+}
+catch (err) {
+    console.error("Error:", err);
 } finally {
     await stop();
 }
@@ -107,6 +124,7 @@ async function startServers(rpcUrl: string): Promise<{
     bundlerRpcUrl: string;
     stop: () => Promise<void>;
 }> {
+    console.log("Starting Anvil...");
     const execServer = Instance.anvil({
         forkUrl: rpcUrl,
         forkBlockNumber: 10_000_000,
@@ -122,6 +140,7 @@ async function startServers(rpcUrl: string): Promise<{
     await execServer.start();
     const executionRpcUrl = `http://localhost:${execServer.port}`;
 
+    console.log("Starting Alto bundler...");
     const bundlerServer = Instance.alto({
         rpcUrl: executionRpcUrl,
         entrypoints: [ENTRY_POINT],

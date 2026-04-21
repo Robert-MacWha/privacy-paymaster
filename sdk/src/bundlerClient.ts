@@ -40,6 +40,7 @@ export class BundlerClient {
                     paymasterPostOpGasLimit: op.paymaster ? toHex(0) : undefined,
                     paymasterData: op.paymasterData,
                     signature: op.signature,
+                    eip7702Auth: op.authorization ? serializeAuth(op.authorization) : undefined,
                 },
                 this.entryPoint
             ],
@@ -82,6 +83,7 @@ export class BundlerClient {
                     paymasterPostOpGasLimit: op.paymasterPostOpGasLimit ? toHex(op.paymasterPostOpGasLimit) : undefined,
                     paymasterData: op.paymasterData,
                     signature: op.signature,
+                    eip7702Auth: op.authorization ? serializeAuth(op.authorization) : undefined,
                 },
                 this.entryPoint,
             ]
@@ -91,4 +93,15 @@ export class BundlerClient {
     async waitForUserOperationReceipt(hash: Hash): Promise<UserOperationReceipt> {
         return this.client.waitForUserOperationReceipt({ hash });
     }
+}
+
+function serializeAuth(auth: NonNullable<UserOperation['authorization']>) {
+    return {
+        contractAddress: auth.address,
+        chainId: toHex(auth.chainId),
+        nonce: toHex(auth.nonce),
+        r: auth.r,
+        s: auth.s,
+        yParity: toHex(auth.yParity!),
+    };
 }
