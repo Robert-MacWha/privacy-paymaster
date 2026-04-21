@@ -142,7 +142,7 @@ contract PrivacyPaymasterForkTest is Test {
             )
         );
         vm.prank(TornadoFixtures.PAYMASTER);
-        account.previewUnshield(cd);
+        account.previewUnshield(cd, "");
     }
 
     function test_sweep() public {

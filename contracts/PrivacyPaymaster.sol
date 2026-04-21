@@ -143,7 +143,7 @@ contract PrivacyPaymaster is BasePaymaster {
         );
 
         (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
-            .previewUnshield(unshieldCalldata);
+            .previewUnshield(unshieldCalldata, userOp.paymasterAndData);
         if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }

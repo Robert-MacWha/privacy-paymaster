@@ -19,6 +19,7 @@ interface IPrivacyAccount {
     ///
     /// @param unshieldCalldata The exact calldata the account will
     /// forward to the unshield protocol.
+    /// @param paymasterAndData The `userOp.paymasterAndData` field.
     /// @return feeToken The ERC20 (or `address(0)` for native) being
     /// unshielded and credited to the paymaster.
     /// @return feeAmount The amount of `feeToken` being unshielded to the
@@ -26,7 +27,8 @@ interface IPrivacyAccount {
     ///
     /// @dev Reverts on any invalid unshield.
     function previewUnshield(
-        bytes calldata unshieldCalldata
+        bytes calldata unshieldCalldata,
+        bytes calldata paymasterAndData
     ) external view returns (address feeToken, uint256 feeAmount);
 
     /// Executes an unshield followed by the tail calls.

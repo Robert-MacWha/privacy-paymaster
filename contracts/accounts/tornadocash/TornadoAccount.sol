@@ -48,7 +48,8 @@ contract TornadoAccount is BasePrivacyAccount {
     }
 
     function previewUnshield(
-        bytes calldata unshieldCalldata
+        bytes calldata unshieldCalldata,
+        bytes calldata
     ) external view override returns (address feeToken, uint256 feeAmount) {
         address paymaster = msg.sender;
         Decoded memory d = _decode(unshieldCalldata);

@@ -49,7 +49,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
 
     // ----- IPrivacyAccount -----
     function previewUnshield(
-        bytes calldata unshieldCalldata
+        bytes calldata unshieldCalldata,
+        bytes calldata paymasterAndData
     )
         external
         view
