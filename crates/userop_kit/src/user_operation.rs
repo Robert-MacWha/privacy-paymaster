@@ -1,4 +1,5 @@
 use alloy_primitives::{Address, B256, Bytes, U256};
+use alloy_rpc_types::SignedAuthorization;
 use serde::{Deserialize, Serialize};
 
 /// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.
@@ -55,6 +56,9 @@ pub struct UserOperation {
     pub paymaster_data: Option<Bytes>,
 
     pub signature: Bytes,
+
+    #[serde(rename = "eip7702Auth", skip_serializing_if = "Option::is_none")]
+    pub authorization: Option<SignedAuthorization>,
 }
 
 /// A submitted user operation hash.

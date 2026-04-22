@@ -1,5 +1,6 @@
 use alloy_primitives::{Address, Bytes, U256, aliases::U192};
 use alloy_provider::Provider;
+use alloy_rpc_types::SignedAuthorization;
 
 use crate::BundlerError;
 use crate::BundlerProvider;
@@ -15,6 +16,7 @@ pub struct UserOperationBuilder {
     gas: GasConfig,
     factory: Option<Address>,
     factory_data: Option<Bytes>,
+    authorization: Option<SignedAuthorization>,
 }
 
 enum GasConfig {
@@ -42,6 +44,7 @@ impl UserOperationBuilder {
             gas: GasConfig::Auto,
             factory: None,
             factory_data: None,
+            authorization: None,
         }
     }
 
@@ -68,6 +71,11 @@ impl UserOperationBuilder {
     /// Set the nonce key for this operation.
     pub fn with_nonce_key(mut self, key: U192) -> Self {
         self.nonce_key = key;
+        self
+    }
+
+    pub fn with_authorization(mut self, auth: SignedAuthorization) -> Self {
+        self.authorization = Some(auth);
         self
     }
 
@@ -129,6 +137,7 @@ impl UserOperationBuilder {
             paymaster_post_op_gas_limit: Some(0),
             paymaster_data: self.paymaster_data.clone(),
             signature,
+            authorization: self.authorization.clone(),
         };
 
         match self.gas {

@@ -3823,6 +3823,7 @@ dependencies = [
 name = "userop_kit_ts"
 version = "0.1.0"
 dependencies = [
+ "alloy-eip7702",
  "alloy-primitives",
  "alloy-provider",
  "alloy-rpc-client",

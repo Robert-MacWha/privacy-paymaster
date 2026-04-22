@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 alloy-primitives = { version = "1.5.7", features = ["serde"] }
+alloy-eip7702 = "0.6.3"
 alloy-provider = "1.8.3"
 alloy-rpc-client = "1.8.3"
 userop_kit = { workspace = true }
