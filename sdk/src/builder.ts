@@ -1,4 +1,5 @@
-import type { Address, Hex, PublicClient, SignedAuthorization, UserOperation } from 'viem';
+import type { Account, Client, Chain, PublicActions, RpcSchema, Transport } from "viem";
+import type { Address, Hex, SignedAuthorization, UserOperation } from 'viem';
 import type { GasConfig } from './types.js';
 import type { BundlerClient } from './bundlerClient.js';
 
@@ -71,8 +72,12 @@ export class UserOperationBuilder {
     return this;
   }
 
-  async build(
-    rpcClient: PublicClient,
+  async build<
+    transport extends Transport = Transport,  // transport must be set
+    chain extends Chain = Chain,  // chain must be set
+    account extends Account | undefined = Account | undefined,
+  >(
+    rpcClient: Client<transport, chain, account, RpcSchema, PublicActions<transport, chain, account>>,
     bundlerClient: BundlerClient,
   ): Promise<UserOperation> {
     const nonce = await rpcClient.readContract({
