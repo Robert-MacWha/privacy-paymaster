@@ -177,8 +177,8 @@ contract PrivacyPaymaster is BasePaymaster {
             OracleLibrary.getQuoteAtTick(
                 meanTick,
                 weiAmount128,
-                feeToken,
-                WETH
+                WETH,
+                feeToken
             );
     }
 }
