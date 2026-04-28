@@ -21,6 +21,10 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
+      - uses: ./.github/actions/load-sops-secrets
+        with:
+          age_key: ${{ secrets.SOPS_AGE_KEY }}
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
@@ -39,6 +43,10 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+
+      - uses: ./.github/actions/load-sops-secrets
+        with:
+          age_key: ${{ secrets.SOPS_AGE_KEY }}
 
       - name: Install bun
         uses: oven-sh/setup-bun@v2
