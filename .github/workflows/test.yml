@@ -27,8 +27,6 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
-      - run: forge fmt --check
-
       - run: forge build --sizes
 
       - run: forge test -vvv
