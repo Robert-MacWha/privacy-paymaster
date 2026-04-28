@@ -69,7 +69,7 @@
             pkgs.nodejs_22
 
             # Solidity
-            unstable.foundry
+            pkgs.foundry
             aderyn
 
             pkgs.just
