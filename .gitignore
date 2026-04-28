@@ -3,7 +3,6 @@
 .envrc
 .direnv
 
-anvil-state.json
 .vscode
 
 # Added by cargo
