@@ -10,7 +10,8 @@
     "typescript": "^5"
   },
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "test:e2e": "bun test tests/e2e.test.ts"
   },
   "dependencies": {
     "@pimlico/alto": "^0.0.20",
