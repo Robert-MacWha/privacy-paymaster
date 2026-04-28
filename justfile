@@ -14,7 +14,7 @@ utility_addr      := "0xe567a07c0a9D289A26B20582B3c3c05b97e07492"
 # for testing purposes.
 generate-state:
     #!/usr/bin/env bash
-    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000 --dump-state anvil-state.json --chain-id 31337 &
+    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000 --dump-state ./sdk/tests/fixtures/anvil-state.json --chain-id 31337 &
     ANVIL_PID=$!
     trap 'kill $ANVIL_PID 2>/dev/null' EXIT
     sleep 5
