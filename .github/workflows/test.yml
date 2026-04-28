@@ -28,7 +28,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 1.4.4-dev
+          version: v1.5.1
 
       - name: Show Forge version
         run: forge --version
@@ -53,7 +53,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 1.5.1-dev
+          version: v1.5.1
 
       - name: Install bun
         uses: oven-sh/setup-bun@v2
