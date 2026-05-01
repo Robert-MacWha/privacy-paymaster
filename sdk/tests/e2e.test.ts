@@ -11,7 +11,7 @@ import { TornadoBuilder } from "../src/tornadoBuilder";
 
 const SEPOLIA_RPC_URL: string | undefined = process.env.SEPOLIA_RPC_URL;
 if (!SEPOLIA_RPC_URL)
-  throw new Error("SEPOLIA_RPC_URL env must be defined")
+    throw new Error("SEPOLIA_RPC_URL env must be defined")
 
 
 const ENTRY_POINT = entryPoint08Address;
@@ -144,7 +144,7 @@ async function startServers(rpcUrl: string): Promise<{
         forkUrl: rpcUrl,
         forkBlockNumber: 10_000_000,
         chainId: anvil.id,
-        loadState: resolve(import.meta.dir, "../../anvil-state.json"),
+        loadState: resolve(import.meta.dir, "./fixtures/anvil-state.json"),
     });
     await execServer.start();
     const executionRpcUrl = `http://localhost:${execServer.port}`;

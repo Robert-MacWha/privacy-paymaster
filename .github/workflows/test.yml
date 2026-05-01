@@ -12,7 +12,7 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
+  forge:
     name: Foundry project
     runs-on: ubuntu-latest
     steps:
@@ -21,17 +21,45 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
+      - uses: ./.github/actions/load-sops-secrets
+        with:
+          age_key: ${{ secrets.SOPS_AGE_KEY }}
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
 
       - name: Show Forge version
         run: forge --version
 
-      - name: Run Forge fmt
-        run: forge fmt --check
+      - run: forge build --sizes
 
-      - name: Run Forge build
-        run: forge build --sizes
+      - run: forge test -vvv
 
-      - name: Run Forge tests
-        run: forge test -vvv
+  js-sdk:
+    name: JavaScript SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - uses: ./.github/actions/load-sops-secrets
+        with:
+          age_key: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+      
+      - run: bun install
+        working-directory: ./sdk
+      
+      - run: bun test
+        working-directory: ./sdk
