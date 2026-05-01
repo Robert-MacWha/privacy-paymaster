@@ -1,20 +1,21 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, Bytes};
 use alloy_sol_types::SolCall;
 
-use crate::{
-    UserOperationBuilder,
-    abis::{privacy_account::IPrivacyAccount, tornado::Tornado},
-};
+use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
 
 pub struct TornadoCashProtocol {
-    unshield_calldata: Tornado::withdrawCall,
+    withdraw_calldata: Bytes,
     tail_calls: Vec<IPrivacyAccount::Call>,
 }
 
+// TODO: Add helper function for constructing a new Builder fomr (sender: Address, withdrawal: Tornado::withdrawCall)
 impl UserOperationBuilder<TornadoCashProtocol> {
-    pub fn new_tornadocash(sender: Address, withdraw: Tornado::withdrawCall) -> Self {
+    /// Create a new Tornado Cash UserOperationBuilder with the given sender and withdraw calldata.
+    ///
+    /// withdraw_calldata should be `Tornado::withdrawCall::abi_encode((proof, root, nullifierHash, recipient, relayer, fee, refund))`
+    pub fn new_tornadocash(sender: Address, withdraw_calldata: Bytes) -> Self {
         let protocol = TornadoCashProtocol {
-            unshield_calldata: withdraw,
+            withdraw_calldata,
             tail_calls: Vec::new(),
         };
 
@@ -28,9 +29,8 @@ impl UserOperationBuilder<TornadoCashProtocol> {
     }
 
     fn update_calldata(self) -> Self {
-        let unshield_calldata = self.protocol.unshield_calldata.abi_encode().into();
         let calldata = IPrivacyAccount::executeCall::new((
-            unshield_calldata,
+            self.protocol.withdraw_calldata.clone(),
             self.protocol.tail_calls.clone(),
         ))
         .abi_encode()
