@@ -62,7 +62,7 @@ contract TornadoAccountForkTest is Test {
             )
         );
         vm.prank(TornadoFixtures.PAYMASTER);
-        account.previewUnshield(cd, "");
+        account.previewFee(cd, "");
     }
 
     // ----- Tests -----
@@ -103,7 +103,7 @@ contract TornadoAccountForkTest is Test {
             )
         );
         vm.prank(TornadoFixtures.PAYMASTER);
-        account.previewUnshield(cd, "");
+        account.previewFee(cd, "");
     }
 
     function test_invalidRecipient() public {

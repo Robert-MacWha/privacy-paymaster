@@ -4,9 +4,9 @@ pragma solidity ^0.8.28;
 /// Uniform interface for 4337 accounts that can pay a PrivacyPaymaster with
 /// unshielded funds.
 ///
-/// Implementors guarantee that any `unshieldCalldata` that `previewUnshield`
+/// Implementors guarantee that any `feeCalldata` that `previewFee`
 /// approves MUST result in the paymaster being credited with the predicted `feeToken`
-/// and `feeAmount` when `execute` is called with the same `unshieldCalldata`. Failing
+/// and `feeAmount` when `execute` is called with the same `feeCalldata`. Failing
 /// to do so enables griefing of the paymaster.
 interface IPrivacyAccount {
     struct Call {
@@ -14,32 +14,28 @@ interface IPrivacyAccount {
         bytes data;
     }
 
-    /// Performs all protocol-specific validation of the unshield
-    /// blob.
+    /// Performs all protocol-specific validation of the fee payment.
     ///
-    /// @param unshieldCalldata The exact calldata the account will
-    /// forward to the unshield protocol.
+    /// @param feeCalldata The exact calldata the account will
+    /// forward to the privacy protocol to make the fee payment.
     /// @param paymasterAndData The `userOp.paymasterAndData` field.
     /// @return feeToken The ERC20 (or `address(0)` for native) being
-    /// unshielded and credited to the paymaster.
-    /// @return feeAmount The amount of `feeToken` being unshielded to the
+    /// paid to the paymaster.
+    /// @return feeAmount The amount of `feeToken` being paid to the
     /// paymaster.
     ///
-    /// @dev Reverts on any invalid unshield.
-    function previewUnshield(
-        bytes calldata unshieldCalldata,
+    /// @dev Reverts on any invalid fee payment.
+    function previewFee(
+        bytes calldata feeCalldata,
         bytes calldata paymasterAndData
     ) external view returns (address feeToken, uint256 feeAmount);
 
-    /// Executes an unshield followed by the tail calls.
+    /// Executes a fee payment followed by the tail calls.
     ///
-    /// @dev The unshield call MUST always be called first, and MUST result in
+    /// @dev The fee payment MUST always be called first, and MUST result in
     /// the predicted `feeToken` and `feeAmount` being credited to the paymaster.
     ///
     /// @dev The `tail` calls MUST NOT cause the entire transaction to revert if
     /// any fail.
-    function execute(
-        bytes calldata unshieldCalldata,
-        Call[] calldata tail
-    ) external;
+    function execute(bytes calldata feeCalldata, Call[] calldata tail) external;
 }

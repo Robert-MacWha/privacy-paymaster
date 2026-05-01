@@ -13,6 +13,11 @@ bytes32 constant ACCEPT_RAILGUN_RESPONSE = keccak256(
     abi.encodePacked("Accept Railgun Session")
 );
 
+struct ShieldCiphertext {
+    bytes32[3] encryptedBundle; // IV shared (16 bytes), tag (16 bytes), random (16 bytes), IV sender (16 bytes), receiver viewing public key (32 bytes)
+    bytes32 shieldKey; // Public key to generate shared key from
+}
+
 struct ShieldRequest {
     CommitmentPreimage preimage;
     ShieldCiphertext ciphertext;
@@ -36,11 +41,6 @@ struct CommitmentCiphertext {
     bytes32 blindedReceiverViewingKey;
     bytes annotationData; // Only for sender to decrypt
     bytes memo; // Added to note ciphertext for decryption
-}
-
-struct ShieldCiphertext {
-    bytes32[3] encryptedBundle; // IV shared (16 bytes), tag (16 bytes), random (16 bytes), IV sender (16 bytes), receiver viewing public key (32 bytes)
-    bytes32 shieldKey; // Public key to generate shared key from
 }
 
 enum UnshieldType {

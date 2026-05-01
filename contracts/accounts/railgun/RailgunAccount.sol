@@ -41,11 +41,11 @@ contract RailgunAccount is BasePrivacyAccount {
         MASTER_PUBLIC_KEY = _masterPublicKey;
     }
 
-    function previewUnshield(
-        bytes calldata unshieldCalldata,
+    function previewFee(
+        bytes calldata feeCalldata,
         bytes calldata paymasterAndData
     ) external view override returns (address feeToken, uint256 feeAmount) {
-        Transaction[] memory transactions = _decode(unshieldCalldata);
+        Transaction[] memory transactions = _decode(feeCalldata);
 
         if (transactions.length != 1)
             revert InvalidTransactionsLength(transactions.length);
@@ -77,14 +77,12 @@ contract RailgunAccount is BasePrivacyAccount {
 
     // ----- Internals -----
     function _decode(
-        bytes calldata unshieldCalldata
+        bytes calldata feeCalldata
     ) internal pure returns (Transaction[] memory transactions) {
-        if (
-            bytes4(unshieldCalldata[:4]) !=
-            IRailgunSmartWallet.transact.selector
-        ) revert InvalidSelector(bytes4(unshieldCalldata[:4]));
+        if (bytes4(feeCalldata[:4]) != IRailgunSmartWallet.transact.selector)
+            revert InvalidSelector(bytes4(feeCalldata[:4]));
 
-        transactions = abi.decode(unshieldCalldata[4:], (Transaction[]));
+        transactions = abi.decode(feeCalldata[4:], (Transaction[]));
     }
 
     function _decodePaymasterAndData(
