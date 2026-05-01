@@ -2,12 +2,11 @@
 pragma solidity ^0.8.28;
 
 /// Uniform interface for 4337 accounts that can pay a PrivacyPaymaster with
-/// unshielded funds.
+/// privacy-protocol funds.
 ///
 /// Implementors guarantee that any `feeCalldata` that `previewFee`
 /// approves MUST result in the paymaster being credited with the predicted `feeToken`
-/// and `feeAmount` when `execute` is called with the same `feeCalldata`. Failing
-/// to do so enables griefing of the paymaster.
+/// and `feeAmount` when `execute` is called with the same `feeCalldata`.
 interface IPrivacyAccount {
     struct Call {
         address target;

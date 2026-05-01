@@ -138,6 +138,7 @@ contract PrivacyPaymaster is BasePaymaster {
         }
 
         bytes memory feeCalldata = _decodeFeeCalldata(userOp.callData);
+
         (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
             .previewFee(feeCalldata, userOp.paymasterAndData);
         if (!feeTokens[feeToken].allowed) {
