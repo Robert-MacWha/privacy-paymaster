@@ -63,3 +63,24 @@ jobs:
       
       - run: bun test
         working-directory: ./sdk
+
+  rust-sdk:
+    name: Rust SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - uses: ./.github/actions/load-sops-secrets
+        with:
+          age_key: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - run: cargo test --workspace

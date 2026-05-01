@@ -61,6 +61,7 @@
             rustToolchain
             rustfmtNightly
             pkgs.rust-analyzer
+            pkgs.cargo-llvm-cov
 
             # JS / WASM
             pkgs.bun

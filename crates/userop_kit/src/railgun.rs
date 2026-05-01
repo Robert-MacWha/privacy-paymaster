@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::Bytes;
 use alloy_sol_types::SolCall;
 
 use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
@@ -14,13 +14,13 @@ impl UserOperationBuilder<RailgunProtocol> {
     ///
     /// fee_calldata should be the RailgunSmartWallet::transactCall::abi_encode((fee_transaction)) containing
     /// a single transaction that pays the fee.
-    pub fn new_railgun(sender: Address, fee_calldata: Bytes) -> Self {
+    pub fn new_railgun(fee_calldata: Bytes) -> Self {
         let protocol = RailgunProtocol {
             fee_calldata,
             tail_calls: Vec::new(),
         };
 
-        let builder = UserOperationBuilder::new_with(sender, protocol);
+        let builder = UserOperationBuilder::new_with(protocol);
         builder.update_calldata()
     }
 

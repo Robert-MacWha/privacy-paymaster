@@ -1,5 +1,6 @@
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_rpc_types::SignedAuthorization;
+use alloy_signer::Signer;
 
 use crate::UserOperation;
 use crate::bundler::BundlerProvider;
@@ -12,17 +13,17 @@ pub struct UserOperationBuilder<P = ()> {
 }
 
 impl<P> UserOperationBuilder<P> {
-    pub fn new_with(sender: Address, protocol: P) -> Self {
+    pub fn new_with(protocol: P) -> Self {
         Self {
             op: UserOperation {
-                sender,
+                sender: Address::ZERO,
                 nonce: U256::ZERO,
                 factory: None,
                 factory_data: None,
                 call_data: Bytes::new(),
                 call_gas_limit: 0,
                 verification_gas_limit: 0,
-                pre_verification_gas: 0,
+                pre_verification_gas: U256::ZERO,
                 max_fee_per_gas: 0,
                 max_priority_fee_per_gas: 0,
                 paymaster: None,
@@ -71,7 +72,7 @@ impl<P> UserOperationBuilder<P> {
         mut self,
         call_gas_limit: u128,
         verification_gas_limit: u128,
-        pre_verification_gas: u128,
+        pre_verification_gas: U256,
         max_fee_per_gas: u128,
         max_priority_fee_per_gas: u128,
         paymaster_verification_gas_limit: u128,
@@ -98,11 +99,17 @@ impl<P> UserOperationBuilder<P> {
     /// Build a complete `UserOperation` ready for submission.
     pub async fn build<E>(
         mut self,
+        sender: &impl Signer,
         provider: &impl BundlerProvider<Error = E>,
     ) -> Result<UserOperation, E> {
+        self.op.sender = sender.address();
+
         if !self.gas_set {
             self.estimate_gas(provider).await?;
         }
+
+        let hash = self.op.packed().hash(&provider.eip712_domain());
+        self.op.signature = sender.sign_hash(&hash).await.unwrap().as_bytes().into();
 
         Ok(self.op)
     }
@@ -117,7 +124,7 @@ impl<P> UserOperationBuilder<P> {
 
         self.op.call_gas_limit = u256_to_u128(est.call_gas_limit);
         self.op.verification_gas_limit = u256_to_u128(est.verification_gas_limit);
-        self.op.pre_verification_gas = u256_to_u128(est.pre_verification_gas);
+        self.op.pre_verification_gas = est.pre_verification_gas;
         self.op.max_fee_per_gas = max_fee;
         self.op.max_priority_fee_per_gas = max_priority_fee;
         self.op.paymaster_verification_gas_limit =

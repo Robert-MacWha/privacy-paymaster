@@ -1,4 +1,5 @@
 use alloy_primitives::{Address, B256};
+use alloy_sol_types::eip712_domain;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,9 @@ use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOper
 
 pub struct PimlicoBundler {
     bundler: RpcClient,
+    chain_id: u64,
     entry_point: Address,
+    domain: alloy_sol_types::Eip712Domain,
 }
 
 /// Errors from the bundler SDK.
@@ -37,16 +40,45 @@ struct PimlicoSpeedGasEstimate {
 }
 
 impl PimlicoBundler {
-    pub fn new(bundler_url: Url, entry_point: Address) -> Result<Self, PimlicoError> {
+    pub fn new(
+        bundler_url: Url,
+        chain_id: u64,
+        entry_point: Address,
+    ) -> Result<Self, PimlicoError> {
+        let domain = eip712_domain! {
+            name: "ERC4337",
+            version: "1",
+            chain_id: chain_id,
+            verifying_contract: entry_point,
+        };
+
         Ok(Self {
             bundler: RpcClient::new(bundler_url),
+            chain_id,
             entry_point,
+            domain,
         })
+    }
+
+    pub fn set_eip712_domain(&mut self, domain: alloy_sol_types::Eip712Domain) {
+        self.domain = domain;
     }
 }
 
 impl BundlerProvider for PimlicoBundler {
     type Error = PimlicoError;
+
+    fn chain_id(&self) -> u64 {
+        self.chain_id
+    }
+
+    fn entry_point(&self) -> Address {
+        self.entry_point
+    }
+
+    fn eip712_domain(&self) -> alloy_sol_types::Eip712Domain {
+        self.domain.clone()
+    }
 
     async fn suggest_max_fee_per_gas(&self) -> Result<u128, Self::Error> {
         let estimate: PimlicoUserOperationGasEstimate = self

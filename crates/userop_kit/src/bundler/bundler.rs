@@ -1,7 +1,15 @@
+use alloy_primitives::Address;
+use alloy_sol_types::Eip712Domain;
+
 use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash};
 
 pub trait BundlerProvider {
     type Error: std::error::Error;
+
+    fn chain_id(&self) -> u64;
+    fn entry_point(&self) -> Address;
+    fn eip712_domain(&self) -> Eip712Domain;
+
     fn suggest_max_fee_per_gas(
         &self,
     ) -> impl std::future::Future<Output = Result<u128, Self::Error>>;
