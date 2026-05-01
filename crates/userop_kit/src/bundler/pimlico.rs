@@ -1,13 +1,11 @@
 use alloy_primitives::{Address, B256};
-use alloy_rpc_client::RpcClient;
-use alloy_transport::TransportError;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 use crate::bundler::BundlerProvider;
+use crate::bundler::rpc_client::{RpcClient, RpcClientError};
 use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
 
-#[derive(Clone)]
 pub struct PimlicoBundler {
     bundler: RpcClient,
     entry_point: Address,
@@ -17,7 +15,7 @@ pub struct PimlicoBundler {
 #[derive(Debug, thiserror::Error)]
 pub enum PimlicoError {
     #[error("Transport error: {0}")]
-    Transport(#[from] TransportError),
+    Transport(#[from] RpcClientError),
 
     #[error("Abi error: {0}")]
     Abi(#[from] alloy_sol_types::Error),
@@ -41,7 +39,7 @@ struct PimlicoSpeedGasEstimate {
 impl PimlicoBundler {
     pub fn new(bundler_url: Url, entry_point: Address) -> Result<Self, PimlicoError> {
         Ok(Self {
-            bundler: RpcClient::new_http(bundler_url),
+            bundler: RpcClient::new(bundler_url),
             entry_point,
         })
     }
