@@ -36,7 +36,3 @@ If an attacker already has shielded notes, they can attack by unshielding those 
 \* Because Privacy Pools enforces ASP on-chain, attackers will also be semi-rate-limited. This doesn't actually reduce potential damages, just slows down any attacks.
 
 ** Railgun txns are much more variable than privacy pools or TC. I attempted to find worse-case txns, but the actual numbers are likely lower. Testing would be performed to ensure the ratio never approaches 1:1.
-
-### Replay Attacks
-
-Because the paymaster takes custody of unshielded funds before forwarding them to the user's destination address, there is a risk of replay attacks if the destination address is not properly validated. For example, if the paymaster accepted the destination in the paymasterData, an attacker could re-use the userOperation's unshield proof with a different destination to steal funds. To mitigate this, all sensitive data MUST be contained within or proven by the zk proof.
