@@ -1,4 +1,4 @@
-mod abis;
+pub mod abis;
 pub mod builder;
 mod bundler;
 pub mod railgun;
