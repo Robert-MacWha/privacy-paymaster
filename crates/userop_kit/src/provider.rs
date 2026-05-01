@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_primitives::{Address, B256, U256, aliases::U192};
 use alloy_provider::Provider;
 use alloy_rpc_client::RpcClient;
@@ -10,7 +12,9 @@ use crate::BundlerError;
 use crate::{UserOperation, UserOperationHash};
 
 sol! {
-    function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
+    contract EntryPoint {
+        function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
+    }
 }
 
 /// Gas estimates returned by `eth_estimateUserOperationGas`.
@@ -50,14 +54,18 @@ pub struct UserOperationReceipt {
 }
 
 #[derive(Clone)]
-pub struct BundlerProvider<P: Provider> {
-    eth: P,
+pub struct BundlerProvider {
+    eth: Arc<dyn Provider>,
     bundler: RpcClient,
     entry_point: Address,
 }
 
-impl<P: Provider> BundlerProvider<P> {
-    pub fn new(eth: P, bundler: RpcClient, entry_point: Address) -> Result<Self, BundlerError> {
+impl BundlerProvider {
+    pub fn new(
+        eth: Arc<dyn Provider>,
+        bundler: RpcClient,
+        entry_point: Address,
+    ) -> Result<Self, BundlerError> {
         Ok(Self {
             eth,
             bundler,
@@ -67,7 +75,7 @@ impl<P: Provider> BundlerProvider<P> {
 
     /// Fetch the packed nonce from the EntryPoint.
     pub async fn get_nonce(&self, sender: Address, key: U192) -> Result<U256, BundlerError> {
-        let calldata = getNonceCall { sender, key }.abi_encode();
+        let calldata = EntryPoint::getNonceCall { sender, key }.abi_encode();
         let res = self
             .eth
             .call(
@@ -78,7 +86,8 @@ impl<P: Provider> BundlerProvider<P> {
             .await
             .map_err(BundlerError::Transport)?;
 
-        let nonce = getNonceCall::abi_decode_returns(&res).map_err(BundlerError::Abi)?;
+        let nonce =
+            EntryPoint::getNonceCall::abi_decode_returns(&res).map_err(BundlerError::Abi)?;
         Ok(nonce)
     }
 
@@ -98,7 +107,7 @@ impl<P: Provider> BundlerProvider<P> {
 }
 
 // Bundler JSON-RPC
-impl<P: Provider> BundlerProvider<P> {
+impl BundlerProvider {
     pub async fn estimate_gas(
         &self,
         op: &UserOperation,
