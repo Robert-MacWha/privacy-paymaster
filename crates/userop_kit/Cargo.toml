@@ -9,14 +9,13 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-alloy-json-rpc = "2.0.4"
 alloy-primitives = { version = "1.5.7", features = ["serde"] }
-alloy-provider = "1.8.3"
 alloy-rpc-client = "1.8.3"
 alloy-rpc-types = "1.8.3"
 alloy-serde = "1.8.3"
 alloy-sol-macro = "1.5.7"
 alloy-sol-types = "1.5.7"
+alloy-transport = "1.8.3"
 reqwest = "0.13.3"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"

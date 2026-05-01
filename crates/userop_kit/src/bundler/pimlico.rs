@@ -1,22 +1,14 @@
-use std::sync::Arc;
-
-use alloy_primitives::Bytes;
-use alloy_primitives::{Address, B256, U256, aliases::U192};
-use alloy_provider::network::{Ethereum, TransactionBuilder};
-use alloy_provider::{Caller, EthCallParams};
+use alloy_primitives::{Address, B256};
 use alloy_rpc_client::RpcClient;
-use alloy_rpc_types::TransactionRequest;
-use alloy_sol_types::SolCall;
+use alloy_transport::TransportError;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
-use crate::abis::entry_point::EntryPoint;
 use crate::bundler::BundlerProvider;
 use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
 
 #[derive(Clone)]
 pub struct PimlicoBundler {
-    eth: Arc<dyn Caller<Ethereum, Bytes>>,
     bundler: RpcClient,
     entry_point: Address,
 }
@@ -25,10 +17,10 @@ pub struct PimlicoBundler {
 #[derive(Debug, thiserror::Error)]
 pub enum PimlicoError {
     #[error("Transport error: {0}")]
-    Transport(#[source] alloy_provider::transport::TransportError),
+    Transport(#[from] TransportError),
 
     #[error("Abi error: {0}")]
-    Abi(#[source] alloy_sol_types::Error),
+    Abi(#[from] alloy_sol_types::Error),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,13 +39,8 @@ struct PimlicoSpeedGasEstimate {
 }
 
 impl PimlicoBundler {
-    pub fn new(
-        eth: Arc<dyn Caller<Ethereum, Bytes>>,
-        bundler_url: Url,
-        entry_point: Address,
-    ) -> Result<Self, PimlicoError> {
+    pub fn new(bundler_url: Url, entry_point: Address) -> Result<Self, PimlicoError> {
         Ok(Self {
-            eth,
             bundler: RpcClient::new_http(bundler_url),
             entry_point,
         })
@@ -67,8 +54,7 @@ impl BundlerProvider for PimlicoBundler {
         let estimate: PimlicoUserOperationGasEstimate = self
             .bundler
             .request("pimlico_getUserOperationGasPrice", ())
-            .await
-            .map_err(PimlicoError::Transport)?;
+            .await?;
 
         Ok(estimate.standard.max_fee_per_gas)
     }
@@ -77,8 +63,7 @@ impl BundlerProvider for PimlicoBundler {
         let estimate: PimlicoUserOperationGasEstimate = self
             .bundler
             .request("pimlico_getUserOperationGasPrice", ())
-            .await
-            .map_err(PimlicoError::Transport)?;
+            .await?;
 
         Ok(estimate.standard.max_priority_fee_per_gas)
     }
@@ -87,10 +72,10 @@ impl BundlerProvider for PimlicoBundler {
         &self,
         op: &UserOperation,
     ) -> Result<UserOperationGasEstimate, Self::Error> {
-        self.bundler
+        Ok(self
+            .bundler
             .request("eth_estimateUserOperationGas", (op, self.entry_point))
-            .await
-            .map_err(PimlicoError::Transport)
+            .await?)
     }
 
     async fn send_user_operation(
@@ -100,8 +85,7 @@ impl BundlerProvider for PimlicoBundler {
         let hash: B256 = self
             .bundler
             .request("eth_sendUserOperation", (op, self.entry_point))
-            .await
-            .map_err(PimlicoError::Transport)?;
+            .await?;
 
         Ok(UserOperationHash(hash))
     }
@@ -111,8 +95,7 @@ impl BundlerProvider for PimlicoBundler {
             let receipt: Option<UserOperationReceipt> = self
                 .bundler
                 .request("eth_getUserOperationReceipt", (hash.0,))
-                .await
-                .map_err(PimlicoError::Transport)?;
+                .await?;
 
             if let Some(_r) = receipt {
                 return Ok(());

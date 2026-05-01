@@ -1,5 +1,3 @@
-use alloy_primitives::{Address, U256, aliases::U192};
-
 use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash};
 
 pub trait BundlerProvider {
