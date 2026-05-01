@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 alloy-primitives = { version = "1.5", features = ["serde"] }
 alloy-rpc-types = "1.5"
 alloy-serde = "1.5"
+alloy-signer = "1.5"
 alloy-sol-macro = "1.5"
 alloy-sol-types = "1.5"
 reqwest = { version = "0.13", features = ["json"] }
@@ -27,3 +28,8 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["time"] }
+
+[dev-dependencies]
+alloy-signer-local = "1.5"
+insta = "1.47.2"
+tokio = { version = "1", features = ["full"] }
