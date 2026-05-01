@@ -34,16 +34,17 @@ struct FeeToken {
 /// Singleton multi-protocol privacy paymaster.
 ///
 /// A single staked paymaster that sponsors unshields from multiple
-/// privacy protocols via a whitelist of trusted per-protocol 4337
-/// accounts. Each approved account is responsible for protocol-specific
-/// validation (proof, recipient, nullifier, ...) and for reporting —
-/// via `IPrivacyAccount.evaluateUserOperation` — what fee token it will
-/// credit to the paymaster and how much.
+/// privacy protocols. The paymaster enforces the following control flow:
+///   1. The paymaster is configured with a list of approved per-protocol
+///      7702 delegate implementations (e.g., `TornadoDelegate`, `RailgunDelegate`)
+///   2. Upon receiving a user operation, the paymaster checks that the sender's
+///     delegate impl is approved, that the calldata selector is `IPrivacyAccount.execute`,
+///     that the user's selected fee token is allowed, and that the quoted fee amount
+///     is sufficient to cover the operation's max cost.
 ///
-/// The paymaster itself only enforces two things:
-///   1. `userOp.sender` is in `approvedSenders`
-///   2. `grossAmount >= maxCost + markup`, priced through the TWAP oracle
-///      and gated by `feeTokenAllowed`.
+/// The paymaster relies on the per-protocol delegate implementations to estimate
+/// each operation's fee amount. This allows the paymaster to be agnostic to
+/// underlying privacy protocols.
 contract PrivacyPaymaster is BasePaymaster {
     using SafeERC20 for IERC20;
 
@@ -136,18 +137,10 @@ contract PrivacyPaymaster is BasePaymaster {
             revert SenderNotApproved(userOp.sender);
         }
 
-        bool isValidSelector = bytes4(userOp.callData[:4]) ==
-            IPrivacyAccount.execute.selector;
-        if (!isValidSelector)
-            revert InvalidSelector(bytes4(userOp.callData[:4]));
-
-        (bytes memory unshieldCalldata, ) = abi.decode(
-            userOp.callData[4:],
-            (bytes, IPrivacyAccount.Call[])
-        );
+        bytes memory feeCalldata = _decodeFeeCalldata(userOp.callData);
 
         (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
-            .previewUnshield(unshieldCalldata, userOp.paymasterAndData);
+            .previewFee(feeCalldata, userOp.paymasterAndData);
         if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }
@@ -180,5 +173,19 @@ contract PrivacyPaymaster is BasePaymaster {
                 WETH,
                 feeToken
             );
+    }
+
+    function _decodeFeeCalldata(
+        bytes calldata useropCalldata
+    ) internal pure returns (bytes memory feeCalldata) {
+        bool isValidSelector = bytes4(useropCalldata[:4]) ==
+            IPrivacyAccount.execute.selector;
+        if (!isValidSelector)
+            revert InvalidSelector(bytes4(useropCalldata[:4]));
+
+        (feeCalldata, ) = abi.decode(
+            useropCalldata[4:],
+            (bytes, IPrivacyAccount.Call[])
+        );
     }
 }

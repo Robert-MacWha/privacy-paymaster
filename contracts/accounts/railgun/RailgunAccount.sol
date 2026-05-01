@@ -17,16 +17,29 @@ import {
     TokenType
 } from "./Globals.sol";
 
+/// RailgunAccount is a BasePrivacyAccount impl for Railgun. It relies on a similar
+/// mechanism for fee payment as Railgun's native relayer, in which the fee is paid
+/// via an shielded transfer from the user's zk-wallet to the paymaster.
+///
+/// When sending a UserOp, the user must include the fee transaction's commitment
+/// information in the paymasterAndData (random, asset, value). Using this and
+/// the paymaster's hardcoded MASTER_PUBLIC_KEY,the paymaster can compute a
+/// noteHash for the fee transfer and verify that it is included in the transaction's
+/// commitments.
+///
+/// IMPORTANTLY, this means for RailgunAccount fees are received not by the paymaster,
+/// but by the RAILGUN_SMART_WALLET zk-wallet.
 contract RailgunAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector(bytes4 selector);
     error InvalidTransactionsLength(uint256 length);
     error InvalidCommitmentsLength(uint256 length);
-    error InvalidCommitment(bytes32 commitment);
+    error MissingFee();
     error InvalidTransaction(string reason);
     error PaymasterConfigLengthInvalid(uint256 length);
 
     IRailgunSmartWallet immutable RAILGUN_SMART_WALLET;
+    /// The MPK for the paymaster's zk-wallet.
     bytes32 immutable MASTER_PUBLIC_KEY;
 
     uint256 constant PAYMASTER_AND_DATA_LENGTH =
@@ -41,11 +54,11 @@ contract RailgunAccount is BasePrivacyAccount {
         MASTER_PUBLIC_KEY = _masterPublicKey;
     }
 
-    function previewUnshield(
-        bytes calldata unshieldCalldata,
+    function previewFee(
+        bytes calldata feeCalldata,
         bytes calldata paymasterAndData
     ) external view override returns (address feeToken, uint256 feeAmount) {
-        Transaction[] memory transactions = _decode(unshieldCalldata);
+        Transaction[] memory transactions = _decode(feeCalldata);
 
         if (transactions.length != 1)
             revert InvalidTransactionsLength(transactions.length);
@@ -53,11 +66,14 @@ contract RailgunAccount is BasePrivacyAccount {
         if (transaction.commitments.length == 0)
             revert InvalidCommitmentsLength(0);
 
+        //? Extract the noteHash inputs from paymasterAndData
         (
             bytes32 random,
             address asset,
             uint256 value
         ) = _decodePaymasterAndData(paymasterAndData);
+
+        //? Compute the noteHash for the fee transfer
         bytes32 commitment = _hashCommitment(
             MASTER_PUBLIC_KEY,
             random,
@@ -65,9 +81,16 @@ contract RailgunAccount is BasePrivacyAccount {
             value
         );
 
-        if (transaction.commitments[0] != commitment)
-            revert InvalidCommitment(transaction.commitments[0]);
+        //? Verify that the fee transfer is included in the transaction's commitments
+        bool commitmentFound = false;
+        for (uint256 i = 0; i < transaction.commitments.length; i++) {
+            if (transaction.commitments[i] == commitment) {
+                commitmentFound = true;
+            }
+        }
+        if (!commitmentFound) revert MissingFee();
 
+        //? Verify that the transaction is valid according to railgun's rules
         (bool valid, string memory reason) = RAILGUN_SMART_WALLET
             .validateTransaction(transaction);
         if (!valid) revert InvalidTransaction(reason);
@@ -77,14 +100,12 @@ contract RailgunAccount is BasePrivacyAccount {
 
     // ----- Internals -----
     function _decode(
-        bytes calldata unshieldCalldata
+        bytes calldata feeCalldata
     ) internal pure returns (Transaction[] memory transactions) {
-        if (
-            bytes4(unshieldCalldata[:4]) !=
-            IRailgunSmartWallet.transact.selector
-        ) revert InvalidSelector(bytes4(unshieldCalldata[:4]));
+        if (bytes4(feeCalldata[:4]) != IRailgunSmartWallet.transact.selector)
+            revert InvalidSelector(bytes4(feeCalldata[:4]));
 
-        transactions = abi.decode(unshieldCalldata[4:], (Transaction[]));
+        transactions = abi.decode(feeCalldata[4:], (Transaction[]));
     }
 
     function _decodePaymasterAndData(

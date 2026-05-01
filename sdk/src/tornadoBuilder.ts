@@ -25,6 +25,6 @@ export class TornadoBuilder extends PrivacyProtocolBuilder {
             functionName: "withdraw",
             args: [proof, root, nullifierHash, recipient, relayer, fee, 0n],
         });
-        return this.withUnshieldCalldata(calldata);
+        return this.withFeeCalldata(calldata);
     }
 }

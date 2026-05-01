@@ -6,7 +6,7 @@ const privacyAccountAbi = [
         type: "function",
         name: "execute",
         inputs: [
-            { name: "unshieldCalldata", type: "bytes" },
+            { name: "feeCalldata", type: "bytes" },
             {
                 name: "tail",
                 type: "tuple[]",
@@ -22,7 +22,7 @@ const privacyAccountAbi = [
 ] as const;
 
 export class PrivacyProtocolBuilder extends UserOperationBuilder {
-    private unshieldCalldata: Hex = "0x";
+    private feeCalldata: Hex = "0x";
     private tail: { target: Address; data: Hex }[] = [];
 
     constructor(
@@ -31,12 +31,12 @@ export class PrivacyProtocolBuilder extends UserOperationBuilder {
         super(sender);
     }
 
-    withUnshieldCalldata(calldata: Hex) {
-        this.unshieldCalldata = calldata;
+    withFeeCalldata(calldata: Hex) {
+        this.feeCalldata = calldata;
         const cd = encodeFunctionData({
             abi: privacyAccountAbi,
             functionName: "execute",
-            args: [this.unshieldCalldata, this.tail],
+            args: [this.feeCalldata, this.tail],
         });
 
         return this.withCalldata(cd);
@@ -47,7 +47,7 @@ export class PrivacyProtocolBuilder extends UserOperationBuilder {
         const cd = encodeFunctionData({
             abi: privacyAccountAbi,
             functionName: "execute",
-            args: [this.unshieldCalldata, this.tail],
+            args: [this.feeCalldata, this.tail],
         });
 
         return this.withCalldata(cd);

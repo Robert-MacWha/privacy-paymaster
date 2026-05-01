@@ -9,6 +9,14 @@ import {BasePrivacyAccount} from "../BasePrivacyAccount.sol";
 import {ITornadoInstance} from "./interfaces/ITornadoInstance.sol";
 import {IVerifier} from "./interfaces/IVerifier.sol";
 
+/// TornadoAccount is a BasePrivacyAccount impl for Tornadocash. It uses
+/// tornadocash's native relayer fee mechanism, where in a withdraw the user
+/// can specify a fee to be paid to a relayer (in this case, the paymaster) out
+/// of the withdrawn amount.
+///
+/// The account's `previewFee` impl verifies the withdraw proof, ensuring that the
+/// fee is paid to the paymaster, and returns the fee token / amount for the paymaster
+/// to validate.
 contract TornadoAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector(bytes4 selector);
@@ -47,12 +55,12 @@ contract TornadoAccount is BasePrivacyAccount {
         uint256 refund;
     }
 
-    function previewUnshield(
-        bytes calldata unshieldCalldata,
+    function previewFee(
+        bytes calldata feeCalldata,
         bytes calldata
     ) external view override returns (address feeToken, uint256 feeAmount) {
         address paymaster = msg.sender;
-        Decoded memory d = _decode(unshieldCalldata);
+        Decoded memory d = _decode(feeCalldata);
 
         if (d.recipient == address(0)) revert InvalidRecipient(d.recipient);
         if (d.relayer != paymaster) revert InvalidRelayer(d.relayer);
@@ -80,10 +88,10 @@ contract TornadoAccount is BasePrivacyAccount {
 
     // ----- Internals -----
     function _decode(
-        bytes calldata unshieldCalldata
+        bytes calldata feeCalldata
     ) internal pure returns (Decoded memory d) {
-        if (bytes4(unshieldCalldata[:4]) != ITornadoInstance.withdraw.selector)
-            revert InvalidSelector(bytes4(unshieldCalldata[:4]));
+        if (bytes4(feeCalldata[:4]) != ITornadoInstance.withdraw.selector)
+            revert InvalidSelector(bytes4(feeCalldata[:4]));
 
         (
             d.proof,
@@ -94,7 +102,7 @@ contract TornadoAccount is BasePrivacyAccount {
             d.fee,
             d.refund
         ) = abi.decode(
-            unshieldCalldata[4:],
+            feeCalldata[4:],
             (bytes, bytes32, bytes32, address, address, uint256, uint256)
         );
     }

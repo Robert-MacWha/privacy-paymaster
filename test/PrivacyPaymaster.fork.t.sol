@@ -150,7 +150,7 @@ contract PrivacyPaymasterForkTest is Test {
             )
         );
         vm.prank(TornadoFixtures.PAYMASTER);
-        account.previewUnshield(cd, "");
+        account.previewFee(cd, "");
     }
 
     function test_sweep() public {
@@ -192,7 +192,7 @@ contract PrivacyPaymasterForkTest is Test {
         op.nonce = entryPoint.getNonce(sender, 0);
         op.initCode = "";
 
-        bytes memory unshieldCalldata = abi.encodeCall(
+        bytes memory feeCalldata = abi.encodeCall(
             ITornadoInstance.withdraw,
             (
                 proof,
@@ -207,7 +207,7 @@ contract PrivacyPaymasterForkTest is Test {
         IPrivacyAccount.Call[] memory tail = new IPrivacyAccount.Call[](0);
         op.callData = abi.encodeCall(
             IPrivacyAccount.execute,
-            (unshieldCalldata, tail)
+            (feeCalldata, tail)
         );
 
         // accountGasLimits = verificationGasLimit(16) || callGasLimit(16)

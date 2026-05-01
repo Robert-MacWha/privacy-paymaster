@@ -1,81 +1,73 @@
 use alloy_primitives::{Address, Bytes, U256, aliases::U192};
-use alloy_provider::Provider;
 use alloy_rpc_types::SignedAuthorization;
 
 use crate::BundlerError;
 use crate::BundlerProvider;
 use crate::UserOperation;
 
-pub struct UserOperationBuilder {
-    sender: Address,
-    calldata: Option<Bytes>,
-    paymaster: Option<Address>,
-    paymaster_data: Option<Bytes>,
-    signature: Option<Bytes>,
-    nonce_key: U192,
-    gas: GasConfig,
-    factory: Option<Address>,
-    factory_data: Option<Bytes>,
-    authorization: Option<SignedAuthorization>,
+pub struct UserOperationBuilder<P = ()> {
+    pub op: UserOperation,
+    pub protocol: P,
+
+    nonce_key: Option<U192>,
+    gas_set: bool,
 }
 
-enum GasConfig {
-    Auto,
-    Manual {
-        call_gas_limit: u128,
-        verification_gas_limit: u128,
-        pre_verification_gas: u128,
-        max_fee_per_gas: u128,
-        max_priority_fee_per_gas: u128,
-        paymaster_verification_gas_limit: u128,
-        paymaster_post_op_gas_limit: u128,
-    },
-}
-
-impl UserOperationBuilder {
-    pub fn new(sender: Address) -> Self {
+impl<P> UserOperationBuilder<P> {
+    pub fn new_with(sender: Address, protocol: P) -> Self {
         Self {
-            sender,
-            calldata: None,
-            paymaster: None,
-            paymaster_data: None,
-            signature: None,
-            nonce_key: U192::ZERO,
-            gas: GasConfig::Auto,
-            factory: None,
-            factory_data: None,
-            authorization: None,
+            op: UserOperation {
+                sender,
+                nonce: U256::ZERO,
+                factory: None,
+                factory_data: None,
+                call_data: Bytes::new(),
+                call_gas_limit: 0,
+                verification_gas_limit: 0,
+                pre_verification_gas: 0,
+                max_fee_per_gas: 0,
+                max_priority_fee_per_gas: 0,
+                paymaster: None,
+                paymaster_verification_gas_limit: None,
+                paymaster_post_op_gas_limit: None,
+                paymaster_data: None,
+                signature: Bytes::new(),
+                authorization: None,
+            },
+            protocol,
+            nonce_key: None,
+            gas_set: false,
         }
     }
 
     pub fn with_calldata(mut self, calldata: Bytes) -> Self {
-        self.calldata = Some(calldata);
+        self.op.call_data = calldata;
         self
     }
 
     pub fn with_paymaster(mut self, paymaster: Address) -> Self {
-        self.paymaster = Some(paymaster);
+        self.op.paymaster = Some(paymaster);
         self
     }
 
     pub fn with_paymaster_data(mut self, data: Bytes) -> Self {
-        self.paymaster_data = Some(data);
+        self.op.paymaster_data = Some(data);
         self
     }
 
     pub fn with_signature(mut self, sig: Bytes) -> Self {
-        self.signature = Some(sig);
+        self.op.signature = sig;
         self
     }
 
     /// Set the nonce key for this operation.
-    pub fn with_nonce_key(mut self, key: U192) -> Self {
-        self.nonce_key = key;
+    pub fn with_nonce_key(mut self, nonce_key: U192) -> Self {
+        self.nonce_key = Some(nonce_key);
         self
     }
 
     pub fn with_authorization(mut self, auth: SignedAuthorization) -> Self {
-        self.authorization = Some(auth);
+        self.op.authorization = Some(auth);
         self
     }
 
@@ -89,93 +81,55 @@ impl UserOperationBuilder {
         paymaster_verification_gas_limit: u128,
         paymaster_post_op_gas_limit: u128,
     ) -> Self {
-        self.gas = GasConfig::Manual {
-            call_gas_limit,
-            verification_gas_limit,
-            pre_verification_gas,
-            max_fee_per_gas,
-            max_priority_fee_per_gas,
-            paymaster_verification_gas_limit,
-            paymaster_post_op_gas_limit,
-        };
+        self.gas_set = true;
+
+        self.op.call_gas_limit = call_gas_limit;
+        self.op.verification_gas_limit = verification_gas_limit;
+        self.op.pre_verification_gas = pre_verification_gas;
+        self.op.max_fee_per_gas = max_fee_per_gas;
+        self.op.max_priority_fee_per_gas = max_priority_fee_per_gas;
+        self.op.paymaster_verification_gas_limit = Some(paymaster_verification_gas_limit);
+        self.op.paymaster_post_op_gas_limit = Some(paymaster_post_op_gas_limit);
         self
     }
 
     pub fn with_factory(mut self, factory: Address, data: Bytes) -> Self {
-        self.factory = Some(factory);
-        self.factory_data = Some(data);
+        self.op.factory = Some(factory);
+        self.op.factory_data = Some(data);
         self
     }
 
     /// Build a complete `UserOperation` ready for submission.
-    ///
-    /// Fetches the nonce from the EntryPoint. When `GasConfig::Auto`,
-    /// also estimates gas via the bundler and fetches fee market values from
-    /// the eth node.
-    pub async fn build<P: Provider>(
-        &self,
-        provider: &BundlerProvider<P>,
+    pub async fn build(
+        mut self,
+        provider: &BundlerProvider,
     ) -> Result<UserOperation, BundlerError> {
-        let sender = self.sender;
-        let calldata = self.calldata.clone().unwrap_or_default();
-        let signature = self.signature.clone().unwrap_or_default();
-        let nonce = provider.get_nonce(sender, self.nonce_key).await?;
-
-        let mut skeleton = UserOperation {
-            sender,
-            nonce,
-            factory: self.factory.clone(),
-            factory_data: self.factory_data.clone(),
-            call_data: calldata,
-            call_gas_limit: 0,
-            verification_gas_limit: 0,
-            pre_verification_gas: 0,
-            max_fee_per_gas: 0,
-            max_priority_fee_per_gas: 0,
-            paymaster: self.paymaster.clone(),
-            paymaster_verification_gas_limit: Some(0),
-            paymaster_post_op_gas_limit: Some(0),
-            paymaster_data: self.paymaster_data.clone(),
-            signature,
-            authorization: self.authorization.clone(),
-        };
-
-        match self.gas {
-            GasConfig::Auto => {
-                let est = provider.estimate_gas(&skeleton).await?;
-                let max_fee = provider.suggest_max_fee_per_gas().await?;
-                let max_priority_fee = provider.suggest_max_priority_fee_per_gas().await?;
-
-                skeleton.call_gas_limit = u256_to_u128(est.call_gas_limit);
-                skeleton.verification_gas_limit = u256_to_u128(est.verification_gas_limit);
-                skeleton.pre_verification_gas = u256_to_u128(est.pre_verification_gas);
-                skeleton.max_fee_per_gas = max_fee;
-                skeleton.max_priority_fee_per_gas = max_priority_fee;
-                skeleton.paymaster_verification_gas_limit =
-                    est.paymaster_verification_gas_limit.map(u256_to_u128);
-                skeleton.paymaster_post_op_gas_limit =
-                    est.paymaster_post_op_gas_limit.map(u256_to_u128);
-            }
-            GasConfig::Manual {
-                call_gas_limit,
-                verification_gas_limit,
-                pre_verification_gas,
-                max_fee_per_gas,
-                max_priority_fee_per_gas,
-                paymaster_verification_gas_limit,
-                paymaster_post_op_gas_limit,
-            } => {
-                skeleton.call_gas_limit = call_gas_limit;
-                skeleton.verification_gas_limit = verification_gas_limit;
-                skeleton.pre_verification_gas = pre_verification_gas;
-                skeleton.max_fee_per_gas = max_fee_per_gas;
-                skeleton.max_priority_fee_per_gas = max_priority_fee_per_gas;
-                skeleton.paymaster_verification_gas_limit = Some(paymaster_verification_gas_limit);
-                skeleton.paymaster_post_op_gas_limit = Some(paymaster_post_op_gas_limit);
-            }
+        if let Some(nonce_key) = self.nonce_key {
+            let nonce = provider.get_nonce(self.op.sender, nonce_key).await?;
+            self.op.nonce = U256::from(nonce);
         }
 
-        Ok(skeleton)
+        if !self.gas_set {
+            self.estimate_gas(provider).await?;
+        }
+
+        Ok(self.op)
+    }
+
+    async fn estimate_gas(&mut self, provider: &BundlerProvider) -> Result<(), BundlerError> {
+        let est = provider.estimate_gas(&self.op).await?;
+        let max_fee = provider.suggest_max_fee_per_gas().await?;
+        let max_priority_fee = provider.suggest_max_priority_fee_per_gas().await?;
+
+        self.op.call_gas_limit = u256_to_u128(est.call_gas_limit);
+        self.op.verification_gas_limit = u256_to_u128(est.verification_gas_limit);
+        self.op.pre_verification_gas = u256_to_u128(est.pre_verification_gas);
+        self.op.max_fee_per_gas = max_fee;
+        self.op.max_priority_fee_per_gas = max_priority_fee;
+        self.op.paymaster_verification_gas_limit =
+            est.paymaster_verification_gas_limit.map(u256_to_u128);
+        self.op.paymaster_post_op_gas_limit = est.paymaster_post_op_gas_limit.map(u256_to_u128);
+        Ok(())
     }
 }
 

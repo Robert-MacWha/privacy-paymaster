@@ -48,8 +48,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     }
 
     // ----- IPrivacyAccount -----
-    function previewUnshield(
-        bytes calldata unshieldCalldata,
+    function previewFee(
+        bytes calldata feeCalldata,
         bytes calldata paymasterAndData
     )
         external
@@ -59,14 +59,14 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         returns (address feeToken, uint256 feeAmount);
 
     function execute(
-        bytes calldata unshieldCalldata,
+        bytes calldata feeCalldata,
         Call[] calldata tail
     ) external override {
         if (msg.sender != address(ENTRY_POINT)) revert CallerNotEntryPoint();
 
-        // The unshield MUST succeed so the paymaster gets paid.
+        // The fee payment MUST succeed so the paymaster gets paid.
         // aderyn-ignore-next-line(unchecked-low-level-call)
-        (bool ok, ) = PROTOCOL_TARGET.call(unshieldCalldata);
+        (bool ok, ) = PROTOCOL_TARGET.call(feeCalldata);
         if (!ok) revert UnshieldFailed();
 
         // Tail calls are best-effort: a revert would roll back the unshield
