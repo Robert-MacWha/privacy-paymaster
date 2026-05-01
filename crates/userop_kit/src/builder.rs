@@ -1,15 +1,13 @@
-use alloy_primitives::{Address, Bytes, U256, aliases::U192};
+use alloy_primitives::{Address, Bytes, U256};
 use alloy_rpc_types::SignedAuthorization;
 
-use crate::BundlerError;
-use crate::BundlerProvider;
 use crate::UserOperation;
+use crate::bundler::BundlerProvider;
 
 pub struct UserOperationBuilder<P = ()> {
     pub op: UserOperation,
     pub protocol: P,
 
-    nonce_key: Option<U192>,
     gas_set: bool,
 }
 
@@ -35,7 +33,6 @@ impl<P> UserOperationBuilder<P> {
                 authorization: None,
             },
             protocol,
-            nonce_key: None,
             gas_set: false,
         }
     }
@@ -60,9 +57,8 @@ impl<P> UserOperationBuilder<P> {
         self
     }
 
-    /// Set the nonce key for this operation.
-    pub fn with_nonce_key(mut self, nonce_key: U192) -> Self {
-        self.nonce_key = Some(nonce_key);
+    pub fn with_nonce(mut self, nonce: U256) -> Self {
+        self.op.nonce = nonce;
         self
     }
 
@@ -100,15 +96,10 @@ impl<P> UserOperationBuilder<P> {
     }
 
     /// Build a complete `UserOperation` ready for submission.
-    pub async fn build(
+    pub async fn build<E>(
         mut self,
-        provider: &BundlerProvider,
-    ) -> Result<UserOperation, BundlerError> {
-        if let Some(nonce_key) = self.nonce_key {
-            let nonce = provider.get_nonce(self.op.sender, nonce_key).await?;
-            self.op.nonce = U256::from(nonce);
-        }
-
+        provider: &impl BundlerProvider<Error = E>,
+    ) -> Result<UserOperation, E> {
         if !self.gas_set {
             self.estimate_gas(provider).await?;
         }
@@ -116,7 +107,10 @@ impl<P> UserOperationBuilder<P> {
         Ok(self.op)
     }
 
-    async fn estimate_gas(&mut self, provider: &BundlerProvider) -> Result<(), BundlerError> {
+    async fn estimate_gas<E>(
+        &mut self,
+        provider: &impl BundlerProvider<Error = E>,
+    ) -> Result<(), E> {
         let est = provider.estimate_gas(&self.op).await?;
         let max_fee = provider.suggest_max_fee_per_gas().await?;
         let max_priority_fee = provider.suggest_max_priority_fee_per_gas().await?;

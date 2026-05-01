@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, B256, Bytes, U256};
-use alloy_rpc_types::SignedAuthorization;
+use alloy_rpc_types::{Log, SignedAuthorization, TransactionReceipt};
 use serde::{Deserialize, Serialize};
 
 /// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.
@@ -66,3 +66,39 @@ pub struct UserOperation {
 #[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
 #[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct UserOperationHash(pub B256);
+
+/// Gas estimates returned by `eth_estimateUserOperationGas`.
+///
+/// EntryPoint 0.7 & 0.8
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
+#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct UserOperationGasEstimate {
+    pub pre_verification_gas: U256,
+    pub verification_gas_limit: U256,
+    pub call_gas_limit: U256,
+    #[serde(default)]
+    pub paymaster_verification_gas_limit: Option<U256>,
+    #[serde(default)]
+    pub paymaster_post_op_gas_limit: Option<U256>,
+}
+
+/// Receipt returned by `eth_getUserOperationReceipt`.
+///
+/// EntryPoint 0.7 & 0.8
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
+#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[serde(rename_all = "camelCase")]
+pub struct UserOperationReceipt {
+    pub entry_point: Address,
+    pub user_op_hash: B256,
+    pub sender: Address,
+    pub nonce: U256,
+    pub actual_gas_used: U256,
+    pub actual_gas_cost: U256,
+    pub success: bool,
+    pub logs: Vec<Log>,
+    pub receipt: TransactionReceipt,
+}

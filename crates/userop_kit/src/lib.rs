@@ -1,12 +1,13 @@
 mod abis;
 pub mod builder;
-pub mod error;
-pub mod provider;
+mod bundler;
 pub mod railgun;
 pub mod tornadocash;
 pub mod user_operation;
 
 pub use builder::UserOperationBuilder;
-pub use error::BundlerError;
-pub use provider::{BundlerProvider, UserOperationGasEstimate, UserOperationReceipt};
-pub use user_operation::{UserOperation, UserOperationHash};
+pub use bundler::BundlerProvider;
+pub use bundler::pimlico::{PimlicoBundler, PimlicoError};
+pub use user_operation::{
+    UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt,
+};
