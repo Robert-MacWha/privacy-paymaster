@@ -16,7 +16,7 @@ if (!SEPOLIA_RPC_URL)
 
 const ENTRY_POINT = entryPoint08Address;
 
-// Address the tornado AA20 account is deployed at in the Anvil state dump
+// Sepolia TC 1 ETH instance.
 const TORNADO_INSTANCE_ADDR = "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508" as Address;
 
 // Arbitrary deployer key for txns.
@@ -144,7 +144,7 @@ async function startServers(rpcUrl: string): Promise<{
         forkUrl: rpcUrl,
         forkBlockNumber: 10_000_000,
         chainId: anvil.id,
-        loadState: resolve(import.meta.dir, "./fixtures/anvil-state.json"),
+        loadState: resolve(import.meta.dir, "./fixtures/anvil-state-tornadocash.json"),
     });
     await execServer.start();
     const executionRpcUrl = `http://localhost:${execServer.port}`;
