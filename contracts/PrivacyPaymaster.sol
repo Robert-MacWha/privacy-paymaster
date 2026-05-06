@@ -80,6 +80,7 @@ contract PrivacyPaymaster is BasePaymaster {
 
         // Native ETH is always allowed
         feeTokens[address(0)] = FeeToken({allowed: true, pool: address(0)});
+        feeTokens[_weth] = FeeToken({allowed: true, pool: address(0)});
     }
 
     receive() external payable {}
