@@ -15,7 +15,7 @@ import {IPrivacyAccount} from "../interfaces/IPrivacyAccount.sol";
 abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     // ----- ERRORS -----
     error CallerNotEntryPoint();
-    error UnshieldFailed();
+    error UnshieldFailed(bytes returnData);
 
     // ----- EVENTS -----
     event TailCallFailed(
@@ -66,8 +66,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
 
         // The fee payment MUST succeed so the paymaster gets paid.
         // aderyn-ignore-next-line(unchecked-low-level-call)
-        (bool ok, ) = PROTOCOL_TARGET.call(feeCalldata);
-        if (!ok) revert UnshieldFailed();
+        (bool ok, bytes memory ret) = PROTOCOL_TARGET.call(feeCalldata);
+        if (!ok) revert UnshieldFailed(ret);
 
         // Tail calls are best-effort: a revert would roll back the unshield
         // and leave the paymaster unpaid. Failures are emitted as events.
@@ -75,8 +75,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         for (uint256 i = 0; i < len; ++i) {
             Call calldata c = tail[i];
             // aderyn-ignore-next-line(unchecked-low-level-call)
-            (bool callOk, bytes memory ret) = c.target.call(c.data);
-            if (!callOk) emit TailCallFailed(i, c.target, ret);
+            (bool callOk, bytes memory tailRet) = c.target.call(c.data);
+            if (!callOk) emit TailCallFailed(i, c.target, tailRet);
         }
     }
 }
