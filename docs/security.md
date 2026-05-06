@@ -1,4 +1,3 @@
-
 ## Priorities
 
 1. User fund safety: The user should always be able to retain full custody of all their funds. Unshielded funds should be transferred from the privacy protocol to the user's destination address without passing through the paymaster's control. This mitigates any risk of bugs in the paymaster leading to loss of user funds.
