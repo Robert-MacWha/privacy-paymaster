@@ -97,7 +97,7 @@ export class BundlerClient {
 
 function serializeAuth(auth: NonNullable<UserOperation['authorization']>) {
     return {
-        contractAddress: auth.address,
+        address: auth.address,
         chainId: toHex(auth.chainId),
         nonce: toHex(auth.nonce),
         r: auth.r,
