@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { resolve } from "path";
 import { Instance } from "prool";
-import type { Account, Chain, Client, PublicActions, RpcSchema, Transport, WalletActions } from "viem";
 import { createWalletClient, getContract, http, parseAbi, publicActions, type Address, type Hex } from "viem";
 import { entryPoint08Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
@@ -47,20 +46,7 @@ const tornadoAbi = parseAbi([
 let execRpcUrl: string;
 let bundlerClient: BundlerClient;
 let stop: () => Promise<void>;
-let client: WalletPublicClient;
-
-// A Client type that contains PublicActions and WalletActions, with no optional Chain
-export type WalletPublicClient<
-    transport extends Transport = Transport,
-    chain extends Chain | undefined = Chain,
-    account extends Account | undefined = Account | undefined,
-> = Client<
-    transport,
-    chain,
-    account,
-    RpcSchema,
-    PublicActions<transport, chain, account> & WalletActions<chain, account>
->;
+let client: ReturnType<typeof createWalletClient> & ReturnType<typeof publicActions>;
 
 beforeAll(async () => {
     const servers = await startServers(SEPOLIA_RPC_URL);
@@ -93,6 +79,7 @@ describe("tornado paymaster e2e", () => {
         // Shield tc commitment
         const denomination = await Tornado.read.denomination();
         const hash = await Tornado.write.deposit([COMMITMENT], {
+            chain: anvil,
             account,
             value: denomination,
         });
