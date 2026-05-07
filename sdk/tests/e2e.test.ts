@@ -67,7 +67,7 @@ beforeAll(async () => {
     stop = servers.stop;
     execRpcUrl = servers.execRpcUrl;
 
-    bundlerClient = new BundlerClient(anvil, http(servers.bundlerRpcUrl), ENTRY_POINT);
+    bundlerClient = new BundlerClient(servers.bundlerRpcUrl, ENTRY_POINT);
     client = createWalletClient({
         chain: anvil,
         transport: http(execRpcUrl),
