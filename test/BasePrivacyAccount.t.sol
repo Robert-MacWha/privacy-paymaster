@@ -73,14 +73,16 @@ contract BasePrivacyAccountTest is Test {
         account.execute(new bytes(0), _noTail());
     }
 
-    function test_unshieldFailed() public {
+    function test_feeFailed() public {
         TornadoAccount bad = new TornadoAccount(
             IEntryPoint(ENTRY_POINT),
             ITornadoInstance(reverter),
             address(0)
         );
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(abi.encodeWithSelector(BasePrivacyAccount.UnshieldFailed.selector, ""));
+        vm.expectRevert(
+            abi.encodeWithSelector(BasePrivacyAccount.FeeFailed.selector, "")
+        );
         bad.execute(new bytes(0), _noTail());
     }
 
@@ -99,7 +101,7 @@ contract BasePrivacyAccountTest is Test {
 
     function test_tailCallReverts_emitsEvent() public {
         vm.expectEmit(true, true, false, false);
-        emit BasePrivacyAccount.TailCallFailed(0, reverter, "");
+        emit BasePrivacyAccount.TailCallFailed("");
         vm.prank(ENTRY_POINT);
         account.execute(new bytes(0), _tail(reverter, ""));
     }
@@ -113,7 +115,7 @@ contract BasePrivacyAccountTest is Test {
     function test_tailCalls_partialFailure() public {
         // First call succeeds, second reverts — only index 1 should emit.
         vm.expectEmit(true, true, false, false);
-        emit BasePrivacyAccount.TailCallFailed(1, reverter, "");
+        emit BasePrivacyAccount.TailCallFailed("");
         vm.prank(ENTRY_POINT);
         account.execute(new bytes(0), _tail2(succeeder, reverter));
     }
@@ -158,7 +160,9 @@ contract CallReverter is ITornadoInstance {
         return address(0);
     }
     function deposit(bytes32) external payable override {
-        assembly { revert(0, 0) }
+        assembly {
+            revert(0, 0)
+        }
     }
     function isKnownRoot(bytes32) external pure override returns (bool) {
         return false;
@@ -175,13 +179,19 @@ contract CallReverter is ITornadoInstance {
         uint256,
         uint256
     ) external pure override {
-        assembly { revert(0, 0) }
+        assembly {
+            revert(0, 0)
+        }
     }
     receive() external payable {
-        assembly { revert(0, 0) }
+        assembly {
+            revert(0, 0)
+        }
     }
     fallback() external payable {
-        assembly { revert(0, 0) }
+        assembly {
+            revert(0, 0)
+        }
     }
 
     function test() external {}
