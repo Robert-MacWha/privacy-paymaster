@@ -1,5 +1,4 @@
-use alloy_primitives::Bytes;
-use alloy_sol_types::SolCall;
+use alloy::{primitives::Bytes, sol_types::SolCall};
 
 use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
 
@@ -7,6 +6,8 @@ pub struct TornadoCashProtocol {
     withdraw_calldata: Bytes,
     tail_calls: Vec<IPrivacyAccount::Call>,
 }
+
+// TODO: Create `sign_railgun_authorization`-like helpers
 
 // TODO: Add helper function for constructing a new Builder fomr (sender: Address, withdrawal: Tornado::withdrawCall)
 impl UserOperationBuilder<TornadoCashProtocol> {

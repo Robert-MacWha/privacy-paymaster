@@ -1,6 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct RpcClient {
@@ -13,6 +13,8 @@ pub struct RpcClient {
 pub enum RpcClientError {
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
     #[error("RPC error {code}: {message}")]
     Rpc { code: i64, message: String },
     #[error("Missing result")]
@@ -20,9 +22,10 @@ pub enum RpcClientError {
 }
 
 #[derive(Deserialize)]
-struct RpcResponse<T> {
-    result: Option<T>,
-    error: Option<RpcError>,
+#[serde(untagged)]
+enum RpcResponse<T> {
+    Success { result: T },
+    Failure { error: RpcError },
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,22 +56,27 @@ impl RpcClient {
             "params": params,
         });
 
-        let resp: RpcResponse<R> = self
+        let text = self
             .client
             .post(self.url.clone())
             .json(&body)
             .send()
             .await?
-            .json()
+            .text()
             .await?;
+        let resp: RpcResponse<Value> = serde_json::from_str(&text)?;
 
-        if let Some(err) = resp.error {
-            return Err(RpcClientError::Rpc {
-                code: err.code,
-                message: err.message,
-            });
-        }
+        let resp = match resp {
+            RpcResponse::Success { result } => result,
+            RpcResponse::Failure { error } => {
+                return Err(RpcClientError::Rpc {
+                    code: error.code,
+                    message: error.message,
+                });
+            }
+        };
 
-        resp.result.ok_or(RpcClientError::MissingResult)
+        let result = serde_json::from_value(resp)?;
+        Ok(result)
     }
 }

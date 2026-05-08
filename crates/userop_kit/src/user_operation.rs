@@ -1,13 +1,16 @@
-use alloy_primitives::{Address, B256, Bytes, U256};
-use alloy_rpc_types::{Log, SignedAuthorization, TransactionReceipt};
-use alloy_signer::{Signature, Signer};
-use alloy_sol_types::{Eip712Domain, SolStruct};
+use alloy::{
+    eips::eip7702::SignedAuthorization,
+    primitives::{Address, B256, Bytes, U256},
+    rpc::types::{Log, ReceiptWithBloom, TransactionReceipt},
+    signers::{Signature, Signer},
+    sol_types::{Eip712Domain, SolStruct},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::abis::entry_point::{PackedUserOperation, SignedUserOperation};
 
 /// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
 #[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
@@ -22,18 +25,18 @@ pub struct UserOperation {
     pub factory_data: Option<Bytes>,
     pub call_data: Bytes,
 
-    #[serde(with = "alloy_serde::quantity")]
+    #[serde(with = "alloy::serde::quantity")]
     pub call_gas_limit: u128,
 
-    #[serde(with = "alloy_serde::quantity")]
+    #[serde(with = "alloy::serde::quantity")]
     pub verification_gas_limit: u128,
 
     pub pre_verification_gas: U256,
 
-    #[serde(with = "alloy_serde::quantity")]
+    #[serde(with = "alloy::serde::quantity")]
     pub max_fee_per_gas: u128,
 
-    #[serde(with = "alloy_serde::quantity")]
+    #[serde(with = "alloy::serde::quantity")]
     pub max_priority_fee_per_gas: u128,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -42,14 +45,14 @@ pub struct UserOperation {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "alloy_serde::quantity::opt"
+        with = "alloy::serde::quantity::opt"
     )]
     pub paymaster_verification_gas_limit: Option<u128>,
 
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        with = "alloy_serde::quantity::opt"
+        with = "alloy::serde::quantity::opt"
     )]
     pub paymaster_post_op_gas_limit: Option<u128>,
 
@@ -71,7 +74,7 @@ pub struct UserOperationHash(pub B256);
 /// Gas estimates returned by `eth_estimateUserOperationGas`.
 ///
 /// EntryPoint 0.7 & 0.8
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
 #[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
@@ -88,6 +91,8 @@ pub struct UserOperationGasEstimate {
 /// Receipt returned by `eth_getUserOperationReceipt`.
 ///
 /// EntryPoint 0.7 & 0.8
+///
+/// TODO: Add logs and receipt fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
 #[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
@@ -100,8 +105,9 @@ pub struct UserOperationReceipt {
     pub actual_gas_used: U256,
     pub actual_gas_cost: U256,
     pub success: bool,
+    pub reason: Option<Bytes>,
     pub logs: Vec<Log>,
-    pub receipt: TransactionReceipt,
+    pub receipt: TransactionReceipt<ReceiptWithBloom>,
 }
 
 impl UserOperation {
@@ -119,7 +125,7 @@ impl PackedUserOperation {
         &self,
         domain: &Eip712Domain,
         signer: &impl Signer,
-    ) -> Result<SignedUserOperation, alloy_signer::Error> {
+    ) -> Result<SignedUserOperation, alloy::signers::Error> {
         let hash = self.hash(domain);
         let signature = signer.sign_hash(&hash).await?.as_bytes().into();
 
@@ -158,6 +164,20 @@ impl From<UserOperation> for PackedUserOperation {
             gasFees: gas_fees,
             paymasterAndData: paymaster_and_data,
         }
+    }
+}
+
+impl UserOperationGasEstimate {
+    pub fn sum(&self) -> U256 {
+        let mut total =
+            self.pre_verification_gas + self.verification_gas_limit + self.call_gas_limit;
+        if let Some(paymaster_verification_gas_limit) = self.paymaster_verification_gas_limit {
+            total += paymaster_verification_gas_limit;
+        }
+        if let Some(paymaster_post_op_gas_limit) = self.paymaster_post_op_gas_limit {
+            total += paymaster_post_op_gas_limit;
+        }
+        total
     }
 }
 
@@ -209,8 +229,10 @@ fn pack_paymaster_and_data(
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::{address, b256};
-    use alloy_sol_types::eip712_domain;
+    use alloy::{
+        primitives::{address, b256},
+        sol_types::eip712_domain,
+    };
 
     use super::*;
 
@@ -239,7 +261,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sign() {
-        use alloy_signer_local::PrivateKeySigner;
+        use alloy::signers::local::PrivateKeySigner;
 
         let op = test_user_operation();
         let domain = test_domain();

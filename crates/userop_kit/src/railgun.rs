@@ -1,5 +1,9 @@
-use alloy_primitives::Bytes;
-use alloy_sol_types::SolCall;
+use alloy::{
+    eips::eip7702::{Authorization, SignedAuthorization},
+    primitives::{Address, B128, Bytes, U256, address, aliases::U120},
+    signers::Signer,
+    sol_types::{SolCall, SolValue},
+};
 
 use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
 
@@ -8,19 +12,28 @@ pub struct RailgunProtocol {
     tail_calls: Vec<IPrivacyAccount::Call>,
 }
 
+pub const IMPL: Address = address!("0xdd14776222fef5ffaf9f8f4c62653d011ce63a1f");
+pub const PAYMASTER: Address = address!("0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba");
+
 // TODO: Add helper function for constructing a new Builder fomr (sender: Address, fee_transaction: RailgunSmartWallet::Transaction)
 impl UserOperationBuilder<RailgunProtocol> {
     /// Create a new Railgun UserOperationBuilder with the given sender and fee transaction calldata.
     ///
     /// fee_calldata should be the RailgunSmartWallet::transactCall::abi_encode((fee_transaction)) containing
     /// a single transaction that pays the fee.
-    pub fn new_railgun(fee_calldata: Bytes) -> Self {
+    pub fn new_railgun(fee_calldata: Bytes, random: B128, asset: Address, value: u128) -> Self {
         let protocol = RailgunProtocol {
             fee_calldata,
             tail_calls: Vec::new(),
         };
 
-        let builder = UserOperationBuilder::new_with(protocol);
+        let builder = UserOperationBuilder::new_with(protocol)
+            .with_paymaster(PAYMASTER)
+            .with_paymaster_data(
+                (random, asset, U120::saturating_from(value))
+                    .abi_encode()
+                    .into(),
+            );
         builder.update_calldata()
     }
 
@@ -36,5 +49,27 @@ impl UserOperationBuilder<RailgunProtocol> {
                 .abi_encode()
                 .into();
         self.with_calldata(calldata)
+    }
+}
+
+/// Creates and signs a Railgun authorization for the given signer, chain ID, and nonce,
+/// setting the address to the standard Railgun withdrawer impl.
+pub async fn sign_railgun_authorization(
+    signer: &impl Signer,
+    chain_id: u64,
+    nonce: u64,
+) -> Result<SignedAuthorization, alloy::signers::Error> {
+    let auth = railgun_authorization(chain_id, nonce);
+    let sig = signer.sign_hash(&auth.signature_hash()).await?;
+    Ok(auth.into_signed(sig))
+}
+
+/// Creates a Railgun authorization for the given chain ID and nonce,
+/// setting the address to the standard Railgun withdrawer impl.
+pub fn railgun_authorization(chain_id: u64, nonce: u64) -> Authorization {
+    Authorization {
+        chain_id: U256::from(chain_id),
+        address: IMPL,
+        nonce,
     }
 }

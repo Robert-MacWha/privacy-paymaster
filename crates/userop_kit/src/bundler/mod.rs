@@ -1,5 +1,5 @@
-pub mod bundler;
+mod bundler;
 pub mod pimlico;
 mod rpc_client;
 
-pub use bundler::BundlerProvider;
+pub use bundler::{BundlerError, BundlerProvider};

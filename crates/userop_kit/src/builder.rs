@@ -1,9 +1,9 @@
-use alloy_primitives::{Address, Bytes, U256};
-use alloy_rpc_types::SignedAuthorization;
-use alloy_signer::Signer;
+use alloy::eips::eip7702::SignedAuthorization;
+use alloy::primitives::{Address, Bytes, U256};
+use alloy::signers::Signer;
 
-use crate::UserOperation;
-use crate::bundler::BundlerProvider;
+use crate::bundler::{BundlerError, BundlerProvider};
+use crate::{UserOperation, UserOperationGasEstimate};
 
 pub struct UserOperationBuilder<P = ()> {
     pub op: UserOperation,
@@ -38,56 +38,97 @@ impl<P> UserOperationBuilder<P> {
         }
     }
 
-    pub fn with_calldata(mut self, calldata: Bytes) -> Self {
-        self.op.call_data = calldata;
+    pub fn with_sender(mut self, sender: Address) -> Self {
+        self.set_sender(sender);
         self
+    }
+
+    pub fn set_sender(&mut self, sender: Address) {
+        self.op.sender = sender;
+    }
+
+    pub fn with_calldata(mut self, calldata: Bytes) -> Self {
+        self.set_calldata(calldata);
+        self
+    }
+
+    pub fn set_calldata(&mut self, calldata: Bytes) {
+        self.op.call_data = calldata;
     }
 
     pub fn with_paymaster(mut self, paymaster: Address) -> Self {
-        self.op.paymaster = Some(paymaster);
+        self.set_paymaster(paymaster);
         self
+    }
+
+    pub fn set_paymaster(&mut self, paymaster: Address) {
+        self.op.paymaster = Some(paymaster);
     }
 
     pub fn with_paymaster_data(mut self, data: Bytes) -> Self {
-        self.op.paymaster_data = Some(data);
+        self.set_paymaster_data(data);
         self
+    }
+
+    pub fn set_paymaster_data(&mut self, data: Bytes) {
+        self.op.paymaster_data = Some(data);
     }
 
     pub fn with_signature(mut self, sig: Bytes) -> Self {
-        self.op.signature = sig;
+        self.set_signature(sig);
         self
+    }
+
+    pub fn set_signature(&mut self, sig: Bytes) {
+        self.op.signature = sig;
     }
 
     pub fn with_nonce(mut self, nonce: U256) -> Self {
-        self.op.nonce = nonce;
+        self.set_nonce(nonce);
         self
     }
 
+    pub fn set_nonce(&mut self, nonce: U256) {
+        self.op.nonce = nonce;
+    }
+
     pub fn with_authorization(mut self, auth: SignedAuthorization) -> Self {
-        self.op.authorization = Some(auth);
+        self.set_authorization(auth);
         self
+    }
+
+    pub fn set_authorization(&mut self, auth: SignedAuthorization) {
+        self.op.authorization = Some(auth);
     }
 
     pub fn with_gas(
         mut self,
-        call_gas_limit: u128,
-        verification_gas_limit: u128,
-        pre_verification_gas: U256,
+        gas: UserOperationGasEstimate,
         max_fee_per_gas: u128,
         max_priority_fee_per_gas: u128,
-        paymaster_verification_gas_limit: u128,
-        paymaster_post_op_gas_limit: u128,
     ) -> Self {
+        self.set_gas(gas, max_fee_per_gas, max_priority_fee_per_gas);
+        self
+    }
+
+    pub fn set_gas(
+        &mut self,
+        gas: UserOperationGasEstimate,
+        max_fee_per_gas: u128,
+        max_priority_fee_per_gas: u128,
+    ) {
         self.gas_set = true;
 
-        self.op.call_gas_limit = call_gas_limit;
-        self.op.verification_gas_limit = verification_gas_limit;
-        self.op.pre_verification_gas = pre_verification_gas;
+        self.op.call_gas_limit = gas.call_gas_limit.saturating_to();
+        self.op.verification_gas_limit = gas.verification_gas_limit.saturating_to();
+        self.op.pre_verification_gas = gas.pre_verification_gas.saturating_to();
+        self.op.paymaster_verification_gas_limit = gas
+            .paymaster_verification_gas_limit
+            .map(|v| v.saturating_to());
+        self.op.paymaster_post_op_gas_limit =
+            gas.paymaster_post_op_gas_limit.map(|v| v.saturating_to());
         self.op.max_fee_per_gas = max_fee_per_gas;
         self.op.max_priority_fee_per_gas = max_priority_fee_per_gas;
-        self.op.paymaster_verification_gas_limit = Some(paymaster_verification_gas_limit);
-        self.op.paymaster_post_op_gas_limit = Some(paymaster_post_op_gas_limit);
-        self
     }
 
     pub fn with_factory(mut self, factory: Address, data: Bytes) -> Self {
@@ -97,11 +138,11 @@ impl<P> UserOperationBuilder<P> {
     }
 
     /// Build a complete `UserOperation` ready for submission.
-    pub async fn build<E>(
+    pub async fn build(
         mut self,
         sender: &impl Signer,
-        provider: &impl BundlerProvider<Error = E>,
-    ) -> Result<UserOperation, E> {
+        provider: &impl BundlerProvider,
+    ) -> Result<UserOperation, BundlerError> {
         self.op.sender = sender.address();
 
         if !self.gas_set {
@@ -114,26 +155,15 @@ impl<P> UserOperationBuilder<P> {
         Ok(self.op)
     }
 
-    async fn estimate_gas<E>(
+    pub async fn estimate_gas(
         &mut self,
-        provider: &impl BundlerProvider<Error = E>,
-    ) -> Result<(), E> {
+        provider: &impl BundlerProvider,
+    ) -> Result<(UserOperationGasEstimate, u128, u128), BundlerError> {
         let est = provider.estimate_gas(&self.op).await?;
         let max_fee = provider.suggest_max_fee_per_gas().await?;
         let max_priority_fee = provider.suggest_max_priority_fee_per_gas().await?;
 
-        self.op.call_gas_limit = u256_to_u128(est.call_gas_limit);
-        self.op.verification_gas_limit = u256_to_u128(est.verification_gas_limit);
-        self.op.pre_verification_gas = est.pre_verification_gas;
-        self.op.max_fee_per_gas = max_fee;
-        self.op.max_priority_fee_per_gas = max_priority_fee;
-        self.op.paymaster_verification_gas_limit =
-            est.paymaster_verification_gas_limit.map(u256_to_u128);
-        self.op.paymaster_post_op_gas_limit = est.paymaster_post_op_gas_limit.map(u256_to_u128);
-        Ok(())
+        self.set_gas(est, max_fee, max_priority_fee);
+        Ok((est, max_fee, max_priority_fee))
     }
-}
-
-fn u256_to_u128(v: U256) -> u128 {
-    v.saturating_to()
 }
