@@ -80,7 +80,7 @@ contract BasePrivacyAccountTest is Test {
             address(0)
         );
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(BasePrivacyAccount.UnshieldFailed.selector);
+        vm.expectRevert(abi.encodeWithSelector(BasePrivacyAccount.UnshieldFailed.selector, ""));
         bad.execute(new bytes(0), _noTail());
     }
 
@@ -158,7 +158,7 @@ contract CallReverter is ITornadoInstance {
         return address(0);
     }
     function deposit(bytes32) external payable override {
-        revert("CallReverter: nope");
+        assembly { revert(0, 0) }
     }
     function isKnownRoot(bytes32) external pure override returns (bool) {
         return false;
@@ -175,13 +175,13 @@ contract CallReverter is ITornadoInstance {
         uint256,
         uint256
     ) external pure override {
-        revert("CallReverter: nope");
+        assembly { revert(0, 0) }
     }
     receive() external payable {
-        revert("CallReverter: nope");
+        assembly { revert(0, 0) }
     }
     fallback() external payable {
-        revert("CallReverter: nope");
+        assembly { revert(0, 0) }
     }
 
     function test() external {}
