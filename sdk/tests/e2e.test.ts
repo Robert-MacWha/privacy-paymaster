@@ -144,7 +144,7 @@ async function startServers(rpcUrl: string): Promise<{
         forkUrl: rpcUrl,
         forkBlockNumber: 10_000_000,
         chainId: anvil.id,
-        loadState: resolve(import.meta.dir, "./fixtures/anvil-state-tornadocash.json"),
+        loadState: resolve(import.meta.dir, "./fixtures/anvil-state.json"),
     });
     await execServer.start();
     const executionRpcUrl = `http://localhost:${execServer.port}`;

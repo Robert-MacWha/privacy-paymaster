@@ -23,7 +23,7 @@ railgun_master_public_key := "0x19acdde26147205d58fd7768be7c011f08a147ef86e6b709
 # for testing purposes.
 generate-state-tornado:
     #!/usr/bin/env bash
-    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000 --dump-state ./sdk/tests/fixtures/anvil-state-tornadocash.json --chain-id 31337 &
+    anvil --fork-url $SEPOLIA_RPC_URL --fork-block-number 10000000 --dump-state ./sdk/tests/fixtures/anvil-state.json --chain-id 31337 &
     ANVIL_PID=$!
     trap 'kill $ANVIL_PID 2>/dev/null' EXIT
     sleep 5
