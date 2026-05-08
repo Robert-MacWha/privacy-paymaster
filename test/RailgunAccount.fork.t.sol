@@ -81,4 +81,71 @@ contract RailgunAccountForkTest is Test, RailgunJson {
         string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
         _evaluate(super.loadTransaction(json), paymasterAndData);
     }
+
+    function test_invalid_selector() public {
+        bytes memory cd = hex"DEADBEEF";
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.InvalidSelector.selector, bytes4(0xDEADBEEF)));
+        vm.prank(RailgunFixtures.PAYMASTER);
+        account.previewFee(cd, "");
+    }
+
+    function test_invalid_transaction_count() public {
+        string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
+        Transaction memory transaction = super.loadTransaction(json);
+
+        Transaction[] memory transactions = new Transaction[](2);
+        transactions[0] = transaction;
+        transactions[1] = transaction;
+
+        bytes memory cd = abi.encodeCall(
+            IRailgunSmartWallet.transact,
+            transactions
+        );
+        
+        vm.prank(RailgunFixtures.PAYMASTER);
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.InvalidTransactionsLength.selector, 2));
+        account.previewFee(cd, "");
+    }
+
+    function test_invalid_paymaster_and_data() public {
+        string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
+        Transaction memory transaction = super.loadTransaction(json);
+
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.PaymasterConfigLengthInvalid.selector, 0));
+        _evaluate(transaction, "");
+    }
+
+    function test_missing_fee_commitment() public {
+        string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
+        Transaction memory transaction = super.loadTransaction(json);
+        // Zero all commitments
+        for (uint256 i = 0; i < transaction.commitments.length; i ++) {
+            transaction.commitments[i] = bytes32(0);
+        }
+
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.MissingFee.selector, 0x19acdde26147205d58fd7768be7c011f08a147ef86e6b70968d09c81cef74b13, bytes16(0x1b82476ce9817694ef807ea954599948), 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14, 2158605619427450));
+        _evaluate(transaction, RailgunFixtures.paymasterAndData());
+    }
+
+    function test_spent_nullifier() public {
+        string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
+        Transaction memory transaction = super.loadTransaction(json);
+        
+        Transaction[] memory transactions = new Transaction[](1);
+        transactions[0] = transaction;
+        railgun.transact(transactions);
+
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.NullifierAlreadyUsed.selector, 0, transaction.nullifiers[0]));
+        _evaluate(transaction, RailgunFixtures.paymasterAndData());
+    }
+
+    function test_invalid_transaction() public {
+        string memory json = vm.readFile("./test/fixtures/transaction-railgun.json");
+        Transaction memory transaction = super.loadTransaction(json);
+
+        transaction.merkleRoot = bytes32(0);
+
+        vm.expectRevert(abi.encodeWithSelector(RailgunAccount.InvalidTransaction.selector, "Invalid Merkle Root"));
+        _evaluate(transaction, RailgunFixtures.paymasterAndData());
+    }
 }

@@ -6,7 +6,8 @@ import {stdJson} from "forge-std/StdJson.sol";
 
 import {
     Transaction, BoundParams, CommitmentCiphertext, CommitmentPreimage,
-    TokenData, TokenType, SnarkProof, G1Point, G2Point, UnshieldType
+    TokenData, TokenType, SnarkProof, G1Point, G2Point, UnshieldType, 
+    ShieldRequest, ShieldCiphertext
 } from "../../contracts/accounts/railgun/Globals.sol";
 
 contract RailgunJson is Test {
