@@ -17,13 +17,11 @@ const entryPointAbi = [
 ] as const;
 
 export class UserOperationBuilder {
-  private sender: Address;
   private op: UserOperation;
   private nonceKey: bigint = 0n;
   private autoGas: boolean = true;
 
   constructor(sender: Address) {
-    this.sender = sender;
     this.op = {
       sender,
       nonce: 0n,
@@ -99,7 +97,7 @@ export class UserOperationBuilder {
       address: bundlerClient.entryPoint,
       abi: entryPointAbi,
       functionName: 'getNonce',
-      args: [this.sender, this.nonceKey],
+      args: [this.op.sender, this.nonceKey],
     });
 
     if (this.autoGas) {
