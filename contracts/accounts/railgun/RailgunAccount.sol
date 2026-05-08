@@ -33,7 +33,6 @@ contract RailgunAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector(bytes4 selector);
     error InvalidTransactionsLength(uint256 length);
-    error InvalidCommitmentsLength(uint256 length);
     error MissingFee(
         bytes32 master_public_key,
         bytes16 random,
@@ -69,8 +68,6 @@ contract RailgunAccount is BasePrivacyAccount {
         if (transactions.length != 1)
             revert InvalidTransactionsLength(transactions.length);
         Transaction memory transaction = transactions[0];
-        if (transaction.commitments.length == 0)
-            revert InvalidCommitmentsLength(0);
 
         //? Extract the noteHash inputs from paymasterAndData
         (
