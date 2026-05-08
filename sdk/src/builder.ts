@@ -1,6 +1,6 @@
-import type { Account, Client, Chain, PublicActions, RpcSchema, Transport } from "viem";
-import type { Address, Hex, SignedAuthorization, UserOperation } from 'viem';
-import type { GasConfig } from './types.js';
+import { createPublicClient, custom, type Address, type Hex, type SignedAuthorization } from 'viem';
+import type { UserOperation } from 'viem';
+import type { EIP1193Provider, GasConfig } from './types.js';
 import type { BundlerClient } from './bundlerClient.js';
 
 const entryPointAbi = [
@@ -72,14 +72,12 @@ export class UserOperationBuilder {
     return this;
   }
 
-  async build<
-    transport extends Transport = Transport,  // transport must be set
-    chain extends Chain = Chain,  // chain must be set
-    account extends Account | undefined = Account | undefined,
-  >(
-    rpcClient: Client<transport, chain, account, RpcSchema, PublicActions<transport, chain, account>>,
+  async build(
+    provider: EIP1193Provider,
     bundlerClient: BundlerClient,
   ): Promise<UserOperation> {
+    const rpcClient = createPublicClient({ transport: custom(provider) });
+
     const nonce = await rpcClient.readContract({
       address: bundlerClient.entryPoint,
       abi: entryPointAbi,

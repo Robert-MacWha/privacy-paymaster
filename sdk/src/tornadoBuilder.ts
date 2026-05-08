@@ -1,5 +1,5 @@
 import { encodeFunctionData, parseAbi, type Address, type Hex } from "viem";
-import { PrivacyProtocolBuilder } from "./privacyProtocolBuilder";
+import { PrivacyProtocolBuilder } from "./privacyProtocolBuilder.js";
 
 export const tornadoAbi = parseAbi([
     "function withdraw(bytes proof, bytes32 root, bytes32 nullifierHash, address recipient, address relayer, uint256 fee, uint256 refund)",

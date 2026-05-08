@@ -1,3 +1,7 @@
+export interface EIP1193Provider {
+  request(args: { method: string; params?: unknown }): Promise<unknown>;
+}
+
 export type GasConfig =
   | { type: 'auto' }
   | {

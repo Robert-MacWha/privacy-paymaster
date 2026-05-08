@@ -1,5 +1,5 @@
 import { encodeFunctionData, type Address, type Hex } from "viem";
-import { UserOperationBuilder } from "./builder";
+import { UserOperationBuilder } from "./builder.js";
 
 const privacyAccountAbi = [
     {
