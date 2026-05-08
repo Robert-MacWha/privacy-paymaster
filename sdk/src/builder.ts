@@ -17,37 +17,35 @@ const entryPointAbi = [
 ] as const;
 
 export class UserOperationBuilder {
-  private calldata: Hex = '0x';
-  private authorization?: SignedAuthorization<number>;
-  private paymaster?: Address;
-  private paymasterData?: Hex;
-  private signature: Hex = '0x';
+  private op: Partial<UserOperation> & { sender: Address };
   private nonceKey: bigint = 0n;
   private gas: GasConfig = { type: 'auto' };
-  private factory?: Address;
-  private factoryData?: Hex;
 
-  constructor(
-    private sender: Address,
-  ) { }
+  constructor(sender: Address) {
+    this.op = {
+      sender,
+      callData: '0x',
+      signature: '0x',
+    };
+  }
 
   withCalldata(calldata: Hex): this {
-    this.calldata = calldata;
+    this.op.callData = calldata;
     return this;
   }
 
   withPaymaster(paymaster: Address): this {
-    this.paymaster = paymaster;
+    this.op.paymaster = paymaster;
     return this;
   }
 
   withPaymasterData(data: Hex): this {
-    this.paymasterData = data;
+    this.op.paymasterData = data;
     return this;
   }
 
   withSignature(signature: Hex): this {
-    this.signature = signature;
+    this.op.signature = signature;
     return this;
   }
 
@@ -62,13 +60,13 @@ export class UserOperationBuilder {
   }
 
   withFactory(factory: Address, factoryData: Hex): this {
-    this.factory = factory;
-    this.factoryData = factoryData;
+    this.op.factory = factory;
+    this.op.factoryData = factoryData;
     return this;
   }
 
   withAuthorization(auth: SignedAuthorization<number>): this {
-    this.authorization = auth;
+    this.op.authorization = auth;
     return this;
   }
 
@@ -78,54 +76,43 @@ export class UserOperationBuilder {
   ): Promise<UserOperation> {
     const rpcClient = createPublicClient({ transport: custom(provider) });
 
-    const nonce = await rpcClient.readContract({
+    this.op.nonce = await rpcClient.readContract({
       address: bundlerClient.entryPoint,
       abi: entryPointAbi,
       functionName: 'getNonce',
-      args: [this.sender, this.nonceKey],
+      args: [this.op.sender, this.nonceKey],
     });
 
-    const skeleton: UserOperation = {
-      authorization: this.authorization,
-      sender: this.sender,
-      nonce,
-      factory: this.factory,
-      factoryData: this.factoryData,
-      callData: this.calldata,
-      callGasLimit: 0n,
-      verificationGasLimit: 0n,
-      preVerificationGas: 0n,
-      maxFeePerGas: 0n,
-      maxPriorityFeePerGas: 0n,
-      paymaster: this.paymaster,
-      paymasterVerificationGasLimit: 0n,
-      paymasterPostOpGasLimit: 0n,
-      paymasterData: this.paymasterData,
-      signature: this.signature,
-    };
+    this.op.callGasLimit = 0n;
+    this.op.verificationGasLimit = 0n;
+    this.op.preVerificationGas = 0n;
+    this.op.maxFeePerGas = 0n;
+    this.op.maxPriorityFeePerGas = 0n;
+    this.op.paymasterVerificationGasLimit = 0n;
+    this.op.paymasterPostOpGasLimit = 0n;
 
     if (this.gas.type === 'auto') {
       const [est, gasPrice] = await Promise.all([
-        bundlerClient.estimateUserOperationGas(skeleton),
+        bundlerClient.estimateUserOperationGas(this.op as UserOperation),
         bundlerClient.getUserOperationGasPrice(),
       ]);
-      skeleton.callGasLimit = BigInt(est.callGasLimit);
-      skeleton.verificationGasLimit = BigInt(est.verificationGasLimit);
-      skeleton.preVerificationGas = BigInt(est.preVerificationGas);
-      skeleton.maxFeePerGas = BigInt(gasPrice.fast.maxFeePerGas);
-      skeleton.maxPriorityFeePerGas = BigInt(gasPrice.fast.maxPriorityFeePerGas);
-      skeleton.paymasterVerificationGasLimit = est.paymasterVerificationGasLimit ? BigInt(est.paymasterVerificationGasLimit) : undefined;
-      skeleton.paymasterPostOpGasLimit = est.paymasterPostOpGasLimit ? BigInt(est.paymasterPostOpGasLimit) : undefined;
+      this.op.callGasLimit = BigInt(est.callGasLimit);
+      this.op.verificationGasLimit = BigInt(est.verificationGasLimit);
+      this.op.preVerificationGas = BigInt(est.preVerificationGas);
+      this.op.maxFeePerGas = BigInt(gasPrice.fast.maxFeePerGas);
+      this.op.maxPriorityFeePerGas = BigInt(gasPrice.fast.maxPriorityFeePerGas);
+      this.op.paymasterVerificationGasLimit = est.paymasterVerificationGasLimit ? BigInt(est.paymasterVerificationGasLimit) : undefined;
+      this.op.paymasterPostOpGasLimit = est.paymasterPostOpGasLimit ? BigInt(est.paymasterPostOpGasLimit) : undefined;
     } else {
-      skeleton.callGasLimit = this.gas.callGasLimit;
-      skeleton.verificationGasLimit = this.gas.verificationGasLimit;
-      skeleton.preVerificationGas = this.gas.preVerificationGas;
-      skeleton.maxFeePerGas = this.gas.maxFeePerGas;
-      skeleton.maxPriorityFeePerGas = this.gas.maxPriorityFeePerGas;
-      skeleton.paymasterVerificationGasLimit = this.gas.paymasterVerificationGasLimit;
-      skeleton.paymasterPostOpGasLimit = this.gas.paymasterPostOpGasLimit;
+      this.op.callGasLimit = this.gas.callGasLimit;
+      this.op.verificationGasLimit = this.gas.verificationGasLimit;
+      this.op.preVerificationGas = this.gas.preVerificationGas;
+      this.op.maxFeePerGas = this.gas.maxFeePerGas;
+      this.op.maxPriorityFeePerGas = this.gas.maxPriorityFeePerGas;
+      this.op.paymasterVerificationGasLimit = this.gas.paymasterVerificationGasLimit;
+      this.op.paymasterPostOpGasLimit = this.gas.paymasterPostOpGasLimit;
     }
 
-    return skeleton;
+    return this.op as UserOperation;
   }
 }
