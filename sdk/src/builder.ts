@@ -17,16 +17,24 @@ const entryPointAbi = [
 ] as const;
 
 export class UserOperationBuilder {
-  private op: Partial<UserOperation> & { sender: Address };
+  private sender: Address;
+  private op: UserOperation;
   private nonceKey: bigint = 0n;
-  private gas: GasConfig = { type: 'auto' };
+  private autoGas: boolean = true;
 
   constructor(sender: Address) {
+    this.sender = sender;
     this.op = {
       sender,
+      nonce: 0n,
       callData: '0x',
+      callGasLimit: 0n,
+      verificationGasLimit: 0n,
+      preVerificationGas: 0n,
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
       signature: '0x',
-    };
+    } as UserOperation;
   }
 
   withCalldata(calldata: Hex): this {
@@ -55,7 +63,18 @@ export class UserOperationBuilder {
   }
 
   withGas(gas: GasConfig): this {
-    this.gas = gas;
+    if (gas.type === 'manual') {
+      this.autoGas = false;
+      this.op.callGasLimit = gas.callGasLimit;
+      this.op.verificationGasLimit = gas.verificationGasLimit;
+      this.op.preVerificationGas = gas.preVerificationGas;
+      this.op.maxFeePerGas = gas.maxFeePerGas;
+      this.op.maxPriorityFeePerGas = gas.maxPriorityFeePerGas;
+      this.op.paymasterVerificationGasLimit = gas.paymasterVerificationGasLimit;
+      this.op.paymasterPostOpGasLimit = gas.paymasterPostOpGasLimit;
+    } else {
+      this.autoGas = true;
+    }
     return this;
   }
 
@@ -80,20 +99,12 @@ export class UserOperationBuilder {
       address: bundlerClient.entryPoint,
       abi: entryPointAbi,
       functionName: 'getNonce',
-      args: [this.op.sender, this.nonceKey],
+      args: [this.sender, this.nonceKey],
     });
 
-    this.op.callGasLimit = 0n;
-    this.op.verificationGasLimit = 0n;
-    this.op.preVerificationGas = 0n;
-    this.op.maxFeePerGas = 0n;
-    this.op.maxPriorityFeePerGas = 0n;
-    this.op.paymasterVerificationGasLimit = 0n;
-    this.op.paymasterPostOpGasLimit = 0n;
-
-    if (this.gas.type === 'auto') {
+    if (this.autoGas) {
       const [est, gasPrice] = await Promise.all([
-        bundlerClient.estimateUserOperationGas(this.op as UserOperation),
+        bundlerClient.estimateUserOperationGas(this.op),
         bundlerClient.getUserOperationGasPrice(),
       ]);
       this.op.callGasLimit = BigInt(est.callGasLimit);
@@ -103,16 +114,8 @@ export class UserOperationBuilder {
       this.op.maxPriorityFeePerGas = BigInt(gasPrice.fast.maxPriorityFeePerGas);
       this.op.paymasterVerificationGasLimit = est.paymasterVerificationGasLimit ? BigInt(est.paymasterVerificationGasLimit) : undefined;
       this.op.paymasterPostOpGasLimit = est.paymasterPostOpGasLimit ? BigInt(est.paymasterPostOpGasLimit) : undefined;
-    } else {
-      this.op.callGasLimit = this.gas.callGasLimit;
-      this.op.verificationGasLimit = this.gas.verificationGasLimit;
-      this.op.preVerificationGas = this.gas.preVerificationGas;
-      this.op.maxFeePerGas = this.gas.maxFeePerGas;
-      this.op.maxPriorityFeePerGas = this.gas.maxPriorityFeePerGas;
-      this.op.paymasterVerificationGasLimit = this.gas.paymasterVerificationGasLimit;
-      this.op.paymasterPostOpGasLimit = this.gas.paymasterPostOpGasLimit;
     }
 
-    return this.op as UserOperation;
+    return this.op;
   }
 }
