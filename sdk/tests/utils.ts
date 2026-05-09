@@ -1,4 +1,4 @@
-import { createTestClient, http, parseEther, type Address } from "viem";
+import { createTestClient, http, parseEther, type Address, type Hex } from "viem";
 import { privateKeyToAddress } from "viem/accounts";
 import { anvil } from "viem/chains";
 
@@ -28,7 +28,7 @@ export async function setBalances(forkUrl: string, addresses: Address[], value: 
     }
 }
 
-export async function setPkBalances(forkUrl: string, privateKeys: string[], value: bigint = parseEther("1000")) {
+export async function setPkBalances(forkUrl: string, privateKeys: Hex[], value: bigint = parseEther("1000")) {
     const addresses = privateKeys.map(privateKeyToAddress);
     await setBalances(forkUrl, addresses, value);
 }
