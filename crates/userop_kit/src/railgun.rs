@@ -12,8 +12,8 @@ pub struct RailgunProtocol {
     tail_calls: Vec<IPrivacyAccount::Call>,
 }
 
-pub const IMPL: Address = address!("0xdd14776222fef5ffaf9f8f4c62653d011ce63a1f");
-pub const PAYMASTER: Address = address!("0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba");
+pub const IMPL: Address = address!("0xaBAd4109fcF3edBf7B7Cdff37A43a2197B5f2cC9");
+pub const PAYMASTER: Address = address!("0xBbbc86034C5371e098163A39eC1bb8B2f015bB74");
 
 // TODO: Add helper function for constructing a new Builder fomr (sender: Address, fee_transaction: RailgunSmartWallet::Transaction)
 impl UserOperationBuilder<RailgunProtocol> {

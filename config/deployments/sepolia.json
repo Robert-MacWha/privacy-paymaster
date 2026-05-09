@@ -1,11 +1,11 @@
 {
   "paymaster": {
-    "address": "0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba"
+    "address": "0xBbbc86034C5371e098163A39eC1bb8B2f015bB74"
   },
   "tornado": {
     "tornadoAccount": "0xdD14776222FeF5FfAF9F8f4c62653d011CE63A1F"
   },
   "railgun": {
-    "railgunAccount": "0x58d2Dcdcd696472bcDc989265C991b269A82E616"
+    "railgunAccount": "0xaBAd4109fcF3edBf7B7Cdff37A43a2197B5f2cC9"
   }
 }
