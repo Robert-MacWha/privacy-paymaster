@@ -10,7 +10,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -25,6 +27,7 @@
   "dependencies": {
     "@pimlico/alto": "^0.0.20",
     "prool": "^0.2.4",
+    "smol-toml": "^1.6.1",
     "viem": "2.48.4"
   }
 }

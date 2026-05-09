@@ -2,6 +2,10 @@
 pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+import {Deployments} from "./lib/Deployments.sol";
+import {Chains} from "./lib/Chains.sol";
+
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -15,11 +19,20 @@ import {
 
 contract DeployTornado is Script {
     function run() external {
-        address paymasterAddr = vm.envAddress("PAYMASTER");
-        address tornadoInstanceAddr = vm.envAddress("TORNADO_INSTANCE");
+        address paymasterAddr = Deployments.readAddress("paymaster", "address");
+        address tornadoInstanceAddr = Chains.readAddress(
+            "protocols.tornado.eth_1",
+            "instance"
+        );
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
-        deploy(paymasterAddr, tornadoInstanceAddr, privateKey);
+        address deployment = deploy(
+            paymasterAddr,
+            tornadoInstanceAddr,
+            privateKey
+        );
+        console.log("Deployed TornadoAccount at:", deployment);
+        Deployments.writeAddress("tornado", "tornadoAccount", deployment);
     }
 
     function deploy(
@@ -44,7 +57,4 @@ contract DeployTornado is Script {
 
         return address(tornadoAccount);
     }
-
-    //? Ignore in forge coverage
-    function test() public {}
 }

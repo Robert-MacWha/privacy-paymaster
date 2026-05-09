@@ -1,0 +1,21 @@
+chain_id = 11155111
+
+[protocols.erc4337]
+entry_point = "0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108"
+
+[protocols.uniswap_v3]
+factory = "0x0227628f3F023bb0B980b67D528571c95c6DaC1c"
+twap_period = 3600
+
+[protocols.tornado.eth_1]
+instance = "0x8cc930096B4Df705A007c4A039BDFA1320Ed2508"
+denomination = "1000000000000000000"
+
+[protocols.railgun]
+smart_wallet = "0xeCFCf3b4eC647c4Ca6D49108b311b7a7C9543fea"
+master_public_key = "0x19acdde26147205d58fd7768be7c011f08a147ef86e6b70968d09c81cef74b13"
+viewing_public_key = "63ec4d326fc49c1c71064c982fb0bcbca2ba593b44ff7e8c7e4e75b401ae1d9c"
+address = "0zk1qyv6eh0zv9rjqh2cl4mk30nuqy0s3g28a7rwddcfdrgfeqww7a93xunpd9kxwatwq937cnfjdlzfc8r3qexfstashj729wje8dz07l5v0e88tdqp4cweczrg0ce"
+
+[tokens]
+weth = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"

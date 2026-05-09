@@ -2,6 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
+import {Deployments} from "./lib/Deployments.sol";
+import {Chains} from "./lib/Chains.sol";
+
 import {
     IEntryPoint
 } from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -9,7 +12,7 @@ import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 
 contract StakePaymaster is Script {
     function run() external {
-        address paymasterAddr = vm.envAddress("PAYMASTER");
+        address paymasterAddr = Deployments.readAddress("paymaster", "address");
         uint256 stakeAmount = vm.envUint("STAKE_AMOUNT");
         uint32 unstakeDelay = uint32(vm.envUint("UNSTAKE_DELAY"));
         uint256 depositAmount = vm.envUint("DEPOSIT_AMOUNT");
@@ -44,7 +47,4 @@ contract StakePaymaster is Script {
             entryPoint.depositTo{value: depositAmount}(paymasterAddr);
         }
     }
-
-    //? Ignore in forge coverage
-    function test() public {}
 }

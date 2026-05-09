@@ -83,7 +83,7 @@ export class UserOperationBuilder {
       abi: entryPointAbi,
       functionName: 'getNonce',
       args: [this.sender, this.nonceKey],
-    });
+    }) as bigint;
 
     const skeleton: UserOperation = {
       authorization: this.authorization,
