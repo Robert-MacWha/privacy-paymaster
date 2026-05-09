@@ -1,21 +1,30 @@
 {
   "name": "privacy-paymaster",
-  "module": "index.ts",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.0"
   },
   "scripts": {
+    "build": "bun build ./index.ts --outdir ./dist --target node --format esm --packages external && tsc -p tsconfig.build.json",
     "test": "bun test",
     "test:e2e": "bun test tests/e2e.test.ts"
   },
   "dependencies": {
     "@pimlico/alto": "^0.0.20",
     "prool": "^0.2.4",
-    "viem": "^2.47.12"
+    "viem": "2.48.4"
   }
 }

@@ -1,4 +1,4 @@
-import { toHex, type Address, type Chain, type EstimateUserOperationGasReturnType, type Hash, type Transport } from "viem";
+import { http, toHex, type Address, type EstimateUserOperationGasReturnType, type Hash } from "viem";
 import type { UserOperation, UserOperationReceipt, BundlerClient as ViemBundlerClient } from "viem/account-abstraction";
 import { createBundlerClient as createViemBundlerClient } from "viem/account-abstraction";
 
@@ -16,8 +16,8 @@ export type GasPrice = {
 export class BundlerClient {
     private client: ViemBundlerClient;
 
-    constructor(chain: Chain, transport: Transport, public entryPoint: Address) {
-        this.client = createViemBundlerClient({ chain, transport });
+    constructor(bundlerUrl: string, public entryPoint: Address) {
+        this.client = createViemBundlerClient({ transport: http(bundlerUrl) });
     }
 
     async estimateUserOperationGas(op: UserOperation): Promise<EstimateUserOperationGasReturnType> {
@@ -97,7 +97,7 @@ export class BundlerClient {
 
 function serializeAuth(auth: NonNullable<UserOperation['authorization']>) {
     return {
-        contractAddress: auth.address,
+        address: auth.address,
         chainId: toHex(auth.chainId),
         nonce: toHex(auth.nonce),
         r: auth.r,
