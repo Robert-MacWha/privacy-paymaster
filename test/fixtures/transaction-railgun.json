@@ -1,0 +1,86 @@
+{
+    "proof": {
+        "a": {
+            "x": "0xd82f445db3d6bdc30ee10109d9b8d2b93271f0ec004bf3ee79fcef811b716d8",
+            "y": "0x1773213c58d3755192a287c33a0a1c5e832eeb9687532faf3847d7bd4f78c485"
+        },
+        "b": {
+            "x": [
+                "0x77d0550e561397747db0ba4adf6175f43751e71173d5b35cc0f499d32f8d9af",
+                "0x139789c8d5b20874f4f5a4f84c73157e093faa52ba7ccc4371daf5ef4dbd46db"
+            ],
+            "y": [
+                "0x2b30ab28f53bbd983569f1d512a78334e20c590fa9f9110bb7e78d8d39674554",
+                "0x30144cf336b173e16519129dbb70fc660ea7680ae88124ad8af2231254ce8e0d"
+            ]
+        },
+        "c": {
+            "x": "0x23d6ea1fda84d19bfa53264a4c5e51278e8cb2bd172c8c0c411fa4c8a0ddd46",
+            "y": "0x209215c71e1d9e34558591f6664040b3bbe3848abf2c43088f9b4479e3e6150d"
+        }
+    },
+    "merkleRoot": "0x10fb2e6468bccdf78fc45535fec8b713ca7e7acb6f6edcc63a7a9fc5498d6b06",
+    "nullifiers": [
+        "0x1efe033634567e2d714ef5d1985e24110f574a874a09c2bbd966db5f7e1b7038"
+    ],
+    "commitments": [
+        "0x1ff61b99d969bbdc993d5d69cf27f190d21d77957c9bf16355e848acb9927f37",
+        "0x1790a40731266abac0c9885cdd4fa29fe36c56373330adb9368e659143a3da2b",
+        "0x295617d2a66e17cf0f853e59cd25ce61776355cebc8781159f1fde8980c3108d"
+    ],
+    "boundParams": {
+        "treeNumber": 0,
+        "minGasPrice": "0x0",
+        "unshield": 0,
+        "chainID": 11155111,
+        "adaptContract": "0x0000000000000000000000000000000000000000",
+        "adaptParams": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "commitmentCiphertext": [
+            {
+                "ciphertext": [
+                    "0x69351dc712361e74de16718a3140585d10519650dd05c589bca348db5c898438",
+                    "0x67e2eb6c9de1c5594584c205fe522bf20c112503b80a22a55a9a69a534b14c46",
+                    "0xd950651b3737422f920322e525baf8095cdd8a79e42d4e61875fa00e62043370",
+                    "0xf4120c20230878dd82b61b3350f910100561c74c933c09f44a61bc59ef9299e0"
+                ],
+                "blindedSenderViewingKey": "0x677e24823d02db672415f16d20ae999861f8a018dd73ef1339db2c44858092e9",
+                "blindedReceiverViewingKey": "0x9d9783f390c609d408fc696ca1c2db8de62485580c76f5105ec5337f3b899ede",
+                "annotationData": "0x673f51ad2aa58d05ecfd870175c5f5ceb6d3ca69c59773fe36f3f53aab71af99baaad6674be95e6b7c3337e5c96c5ea59682acf251fef66d9889e74335ce718b",
+                "memo": "0xf9854351a432c02ef5af30978d"
+            },
+            {
+                "ciphertext": [
+                    "0xa43055c4aa88be12057e42995ebed0e31022b3d5fb042e2d183f74f230b31854",
+                    "0xbaa87285921b64991c51f8356494af680ed601023557ff5f7229d7ea05adf66b",
+                    "0x9a2f0ee4aa947009cabf69de5915fdbee46cb4fce213da2349c15679b85fe1c9",
+                    "0xacba83066bbe9e482fc7347e0c85901d01162b35baba624e8dd4cc15ccc8a628"
+                ],
+                "blindedSenderViewingKey": "0x043ce0bead899fcd3ef311c9afa9185fbc7900dcffaff3b5f102548f1331ab41",
+                "blindedReceiverViewingKey": "0x80ab2d6ecaec196a0e3459b10052bce673eb73645ace5c81e1d126e05553ca86",
+                "annotationData": "0x116a3a4f58e93b17c576dc12dbb32dd4d2041e3472d045022019e59da2850b810a8743e2a82fedbf4e78b0afa06f53c5895e4dfa6f07e17026a3fe23a397cedf",
+                "memo": "0x0088fa"
+            },
+            {
+                "ciphertext": [
+                    "0xdaf6d9620edd91e55d8fe165dfe89de8b04c6878d21a6423b60305bb3190d5dd",
+                    "0x8bdeff371e76abf1617243cf0bf0f6e08ff75f00a4af86e26c3563d8d4decc6f",
+                    "0xc19803fbb965996f1c247d077fafee665c73b0d9149f1ac0662aaff8c98ca396",
+                    "0x89894077aa5852327cbb3f653e0464e8942f153b69f92e74d037b39aee3b8435"
+                ],
+                "blindedSenderViewingKey": "0xf34f6ee88f237a88f2c6f0e206bc3c0f1272212c5504b210c3fd863fa57f3197",
+                "blindedReceiverViewingKey": "0xf34f6ee88f237a88f2c6f0e206bc3c0f1272212c5504b210c3fd863fa57f3197",
+                "annotationData": "0x0794acacf2a7ebf02f44e0a632f66c5dc5c714567a9e04520a7f941700d4c576e8d4a045d57fa4a6bfd1de05b458621ea4d971806e9d5deb79ac465c4bca8e59",
+                "memo": "0xb44e055e0529"
+            }
+        ]
+    },
+    "unshieldPreimage": {
+        "npk": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "token": {
+            "tokenType": 0,
+            "tokenAddress": "0x0000000000000000000000000000000000000000",
+            "tokenSubID": "0x0"
+        },
+        "value": "0x0"
+    }
+}

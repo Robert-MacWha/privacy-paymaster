@@ -1,0 +1,19 @@
+{
+    "preimage": {
+        "npk": "0x2cc470cf47f7c79e28a45eb1710760c60fc0537a1dc8df3baedbcdfe3d3a3324",
+        "token": {
+            "tokenType": 0,
+            "tokenAddress": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "tokenSubID": "0x0"
+        },
+        "value": "0xde0b6b3a7640000"
+    },
+    "ciphertext": {
+        "encryptedBundle": [
+            "0x43cb03f0dc2111d0675125c9d50a783c75d17802a6b03dced339f2b3abc2939f",
+            "0xc87b42566d6c6478f871bfef8a755261a7ecb7db1f54c32783449ddeeb4965d5",
+            "0x060226d1d3dbe402717f9927b86e2bb566b557dc5189b3f65821a9122d806b79"
+        ],
+        "shieldKey": "0x929b07d787faeed149dd25b3ccc2f8d08ac528e482500e52d36e607733232d7a"
+    }
+}

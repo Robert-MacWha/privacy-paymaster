@@ -80,6 +80,7 @@ contract PrivacyPaymaster is BasePaymaster {
 
         // Native ETH is always allowed
         feeTokens[address(0)] = FeeToken({allowed: true, pool: address(0)});
+        feeTokens[_weth] = FeeToken({allowed: true, pool: address(0)});
     }
 
     receive() external payable {}
@@ -145,7 +146,7 @@ contract PrivacyPaymaster is BasePaymaster {
             revert FeeTokenNotAllowed(feeToken);
         }
 
-        uint256 requiredInToken = _quoteWeiInToken(feeToken, maxCost);
+        uint256 requiredInToken = quoteWeiInToken(feeToken, maxCost);
         if (feeAmount < requiredInToken) {
             revert InsufficientFee(requiredInToken, feeAmount);
         }
@@ -154,11 +155,10 @@ contract PrivacyPaymaster is BasePaymaster {
         validationData = 0;
     }
 
-    // ----- Internals -----
-    function _quoteWeiInToken(
+    function quoteWeiInToken(
         address feeToken,
         uint256 weiAmount
-    ) internal view returns (uint256 tokenAmount) {
+    ) public view returns (uint256 tokenAmount) {
         if (feeToken == WETH) return weiAmount;
         if (feeToken == address(0)) return weiAmount; // Native ETH
 
@@ -175,6 +175,7 @@ contract PrivacyPaymaster is BasePaymaster {
             );
     }
 
+    // ----- Internals -----
     function _decodeFeeCalldata(
         bytes calldata useropCalldata
     ) internal pure returns (bytes memory feeCalldata) {

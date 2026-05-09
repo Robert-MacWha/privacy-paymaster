@@ -14,47 +14,6 @@ These paymasters here are structurally similar to [ERC20 paymasters](https://doc
   - `accounts/BasePrivacyAccount.sol` - Base 4337 & privacy account impl. Executes user operations once validated.
   - `accounts/*Account.sol` - Protocol specific account implementations (e.g. TornadoAccount, RailgunAccount). Handle validation of userOps to ensure they corespond to valid unshields.
 
-### Happy Path
-
-```mermaid
-sequenceDiagram
-  participant User
-  participant Bundler
-  participant EntryPoint
-  participant Paymaster
-  participant PrivacyProtocol
-
-  User->>Bundler: Submit userOp
-  Note over Bundler: Simulation phase
-
-  Bundler->>EntryPoint: simulateValidation()
-  EntryPoint->>Paymaster: validatePaymasterUserOp()
-  Paymaster->>PrivacyProtocol: fetch state()
-  Note over Paymaster: Verify receiver == paymaster
-  Note over Paymaster: Verify Nullifier unused
-  Note over Paymaster: Verify proof
-  Paymaster-->>EntryPoint: validation success
-  EntryPoint-->>Bundler: simulation passes
-
-  Note over Bundler: Execution phase
-
-  Bundler->>EntryPoint: handleOps()
-  Note over EntryPoint: _tryDecrementDeposit()
-  EntryPoint->>Paymaster: validatePaymasterUserOp()
-  Note over Paymaster: Repeat Validation
-  Paymaster-->>EntryPoint: validation success
-
-  EntryPoint->>Paymaster: execution()
-  Paymaster->>PrivacyProtocol: execute operation()
-  PrivacyProtocol-->>Paymaster: Withdrawal received
-  Paymaster-->>EntryPoint: execution success
-  EntryPoint->>Paymaster: postOp()
-  Note over Paymaster: Deduct fee
-  Paymaster->>User: Pay remainder
-  Paymaster-->>EntryPoint: postOp success
-  EntryPoint-->>Bundler: handleOps success
-```
-
 ## Development Commands
 
 ### Smart Contracts

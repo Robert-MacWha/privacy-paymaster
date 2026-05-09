@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter};
 
-use alloy_primitives::{B256, Bytes};
-use alloy_sol_macro::sol;
+use alloy::{
+    primitives::{B256, Bytes},
+    sol,
+};
 use serde::{Deserialize, Serialize};
 
 sol! {

@@ -15,14 +15,12 @@ import {IPrivacyAccount} from "../interfaces/IPrivacyAccount.sol";
 abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     // ----- ERRORS -----
     error CallerNotEntryPoint();
-    error UnshieldFailed();
+    error FeeFailed(bytes returnData);
+    error TailCallReverted(uint256 index, address target, bytes returnData);
+    error OnlySelf();
 
     // ----- EVENTS -----
-    event TailCallFailed(
-        uint256 indexed index,
-        address indexed target,
-        bytes returnData
-    );
+    event TailCallFailed(bytes reason);
 
     // ----- IMMUTABLES -----
     IEntryPoint public immutable ENTRY_POINT;
@@ -66,17 +64,28 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
 
         // The fee payment MUST succeed so the paymaster gets paid.
         // aderyn-ignore-next-line(unchecked-low-level-call)
-        (bool ok, ) = PROTOCOL_TARGET.call(feeCalldata);
-        if (!ok) revert UnshieldFailed();
+        (bool ok, bytes memory ret) = PROTOCOL_TARGET.call(feeCalldata);
+        if (!ok) revert FeeFailed(ret);
 
-        // Tail calls are best-effort: a revert would roll back the unshield
-        // and leave the paymaster unpaid. Failures are emitted as events.
+        // Tail calls are executed atomically after fee payment. If any tail call
+        // reverts, all are reverted but the fee payment still goes through.
+        try this._executeTailCalls(tail) {
+            // all tail calls succeeded
+        } catch (bytes memory reason) {
+            emit TailCallFailed(reason);
+        }
+    }
+
+    function _executeTailCalls(Call[] calldata tail) external {
+        if (msg.sender != address(this)) revert OnlySelf();
+
         uint256 len = tail.length;
         for (uint256 i = 0; i < len; ++i) {
             Call calldata c = tail[i];
-            // aderyn-ignore-next-line(unchecked-low-level-call)
             (bool callOk, bytes memory ret) = c.target.call(c.data);
-            if (!callOk) emit TailCallFailed(i, c.target, ret);
+            if (!callOk) {
+                revert TailCallReverted(i, c.target, ret);
+            }
         }
     }
 }

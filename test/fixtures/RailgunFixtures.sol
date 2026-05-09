@@ -4,17 +4,28 @@ pragma solidity ^0.8.28;
 // Hardcoded fixtures for RailgunAccount tests.
 library RailgunFixtures {
     // ----- Network / fork config -----
-    uint256 internal constant FORK_BLOCK = 10_000_000;
+    uint256 internal constant FORK_BLOCK = 10100000;
 
     // Sepolia EntryPoint v0.8.0.
     address internal constant ENTRY_POINT_ADDR =
         0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108;
 
+    // Sepolia RailgunSmartWallet proxy
     address internal constant RAILGUN_SMART_WALLET_ADDR =
         0xeCFCf3b4eC647c4Ca6D49108b311b7a7C9543fea;
 
+    // Sepolia WETH
+    address internal constant WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
+
     address payable internal constant PAYMASTER =
         payable(address(0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba));
+    bytes32 internal constant MASTER_PUBLIC_KEY =
+        hex"19acdde26147205d58fd7768be7c011f08a147ef86e6b70968d09c81cef74b13";
 
-    bytes32 internal constant MASTER_PUBLIC_KEY = hex"01";
+    bytes internal constant PAYMASTER_AND_DATA_PREFIX = hex"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes internal constant PAYMASTER_AND_DATA_VALUE = hex"1b82476ce9817694ef807ea95459994800000000000000000000000000000000000000000000000000000000fff9976782d46cc05630d1f6ebab18b2324d6b140000000000000000000000000000000000000000000000000007ab3d8927f87a";
+    
+    function paymasterAndData() internal pure returns (bytes memory) {
+        return bytes.concat(PAYMASTER_AND_DATA_PREFIX, PAYMASTER_AND_DATA_VALUE);
+    }
 }

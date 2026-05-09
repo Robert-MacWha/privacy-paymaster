@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-import {Transaction, CommitmentPreimage} from "../Globals.sol";
+import {ShieldRequest, Transaction, CommitmentPreimage} from "../Globals.sol";
 
 interface IRailgunSmartWallet {
     function hashLeftRight(
@@ -22,5 +22,7 @@ interface IRailgunSmartWallet {
         Transaction calldata _transaction
     ) external view returns (bool, string memory);
 
+    function shield(ShieldRequest[] calldata _shieldRequests) external;
     function transact(Transaction[] calldata _transactions) external;
+
 }

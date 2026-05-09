@@ -33,8 +33,13 @@ contract RailgunAccount is BasePrivacyAccount {
     // ----- ERRORS -----
     error InvalidSelector(bytes4 selector);
     error InvalidTransactionsLength(uint256 length);
-    error InvalidCommitmentsLength(uint256 length);
-    error MissingFee();
+    error MissingFee(
+        bytes32 master_public_key,
+        bytes16 random,
+        address asset,
+        uint256 value
+    );
+    error NullifierAlreadyUsed(uint256 treeNumber, bytes32 nullifier);
     error InvalidTransaction(string reason);
     error PaymasterConfigLengthInvalid(uint256 length);
 
@@ -63,14 +68,12 @@ contract RailgunAccount is BasePrivacyAccount {
         if (transactions.length != 1)
             revert InvalidTransactionsLength(transactions.length);
         Transaction memory transaction = transactions[0];
-        if (transaction.commitments.length == 0)
-            revert InvalidCommitmentsLength(0);
 
         //? Extract the noteHash inputs from paymasterAndData
         (
-            bytes32 random,
+            bytes16 random,
             address asset,
-            uint256 value
+            uint120 value
         ) = _decodePaymasterAndData(paymasterAndData);
 
         //? Compute the noteHash for the fee transfer
@@ -88,12 +91,11 @@ contract RailgunAccount is BasePrivacyAccount {
                 commitmentFound = true;
             }
         }
-        if (!commitmentFound) revert MissingFee();
+        if (!commitmentFound)
+            revert MissingFee(MASTER_PUBLIC_KEY, random, asset, value);
 
         //? Verify that the transaction is valid according to railgun's rules
-        (bool valid, string memory reason) = RAILGUN_SMART_WALLET
-            .validateTransaction(transaction);
-        if (!valid) revert InvalidTransaction(reason);
+        _validateTransaction(transaction);
 
         return (asset, value);
     }
@@ -110,7 +112,7 @@ contract RailgunAccount is BasePrivacyAccount {
 
     function _decodePaymasterAndData(
         bytes calldata paymasterAndData
-    ) internal pure returns (bytes32 random, address asset, uint256 value) {
+    ) internal pure returns (bytes16 random, address asset, uint120 value) {
         if (paymasterAndData.length < PAYMASTER_AND_DATA_LENGTH) {
             revert PaymasterConfigLengthInvalid(paymasterAndData.length);
         }
@@ -118,18 +120,18 @@ contract RailgunAccount is BasePrivacyAccount {
         bytes memory data = paymasterAndData[
             UserOperationLib.PAYMASTER_DATA_OFFSET:
         ];
-        (random, asset, value) = abi.decode(data, (bytes32, address, uint256));
+        (random, asset, value) = abi.decode(data, (bytes16, address, uint120));
     }
 
     function _hashCommitment(
         bytes32 master_public_key,
-        bytes32 random,
+        bytes16 random,
         address asset,
-        uint256 value
+        uint120 value
     ) internal view returns (bytes32) {
         bytes32 npk = RAILGUN_SMART_WALLET.hashLeftRight(
             master_public_key,
-            random
+            bytes32(uint256(uint128(random)))
         );
 
         CommitmentPreimage memory commitmentPreimage = CommitmentPreimage({
@@ -139,9 +141,26 @@ contract RailgunAccount is BasePrivacyAccount {
                 tokenAddress: asset,
                 tokenSubID: 0
             }),
-            value: uint120(value)
+            value: value
         });
 
         return RAILGUN_SMART_WALLET.hashCommitment(commitmentPreimage);
+    }
+
+    function _validateTransaction(
+        Transaction memory transaction
+    ) internal view {
+        // Check nullifiers
+        uint256 treeNumber = transaction.boundParams.treeNumber;
+        for (uint256 i = 0; i < transaction.nullifiers.length; ++i) {
+            bytes32 nullifier = transaction.nullifiers[i];
+            if (RAILGUN_SMART_WALLET.nullifiers(treeNumber, nullifier)) {
+                revert NullifierAlreadyUsed(treeNumber, nullifier);
+            }
+        }
+
+        (bool valid, string memory reason) = RAILGUN_SMART_WALLET
+            .validateTransaction(transaction);
+        if (!valid) revert InvalidTransaction(reason);
     }
 }
