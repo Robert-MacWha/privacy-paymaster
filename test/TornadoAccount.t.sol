@@ -24,7 +24,10 @@ contract TornadoAccountForkTest is Test {
     address internal paymaster;
 
     function setUp() public {
-        vm.createSelectFork(vm.rpcUrl("sepolia"), TornadoFixtures.FORK_BLOCK);
+        vm.createSelectFork(
+            vm.rpcUrl("sepolia"),
+            TornadoFixtures.loadForkBlock()
+        );
 
         address tornadoAddr = Chains.readAddress(
             "protocols.tornado.eth_1",

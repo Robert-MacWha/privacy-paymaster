@@ -7,6 +7,7 @@ import { BundlerClient } from "../src/bundlerClient";
 import { TornadoBuilder } from "../src/tornadoBuilder";
 import { runForge, setPkBalances } from "./utils";
 import chain from "../../config/chains/sepolia.toml";
+import configFixtures from "../../test/fixtures/tornadocash/config.json";
 import shieldFixtures from "../../test/fixtures/tornadocash/shield.json";
 import unshieldFixtures from "../../test/fixtures/tornadocash/unshield.json";
 
@@ -19,18 +20,8 @@ const SEPOLIA_RPC_URL: string | undefined = process.env.SEPOLIA_RPC_URL;
 if (!SEPOLIA_RPC_URL)
     throw new Error("SEPOLIA_RPC_URL env must be defined");
 
-//? NOTE: Changing the fork block number will cause the test snapshots to become invalid,
-//? as the tornadocash fixtures are generated based on the merkle trie state at this block.
-const FORK_BLOCK_NUMBER = 10_000_000;
-
-// Pre-funded pks for testing
-//? NOTE: DEPLOYER_PK is used to deploy the paymaster & TornadoAccount. Because of this it
-//? affects the resulting PrivacyPaymaster address. Changing this key means you also need
-//? to regenerate the tornadocash unshield fixtures, which use the PrivacyPaymaster's address
-//? as the relayer. Failing to do so will caus an `InvalidRelayer` revert.
-const DEPLOYER_PK = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" as Hex;
-
-// Both alto keys are arbitrary and can be changed freely
+const FORK_BLOCK_NUMBER = configFixtures.forkBlockNumber;
+const DEPLOYER_PK = configFixtures.deployerPrivateKey as Hex;
 const ALTO_EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
 const ALTO_UTILITY_PK = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
 

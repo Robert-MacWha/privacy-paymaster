@@ -9,7 +9,11 @@ library TornadoFixtures {
     using stdJson for string;
     Vm constant vm = Vm(address(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D));
 
-    uint256 internal constant FORK_BLOCK = 10_000_000;
+    function loadForkBlock() internal view returns (uint256) {
+        string memory file = "test/fixtures/tornadocash/config.json";
+        string memory json = vm.readFile(file);
+        return vm.parseJsonUint(json, ".forkBlockNumber");
+    }
 
     function loadCommitment() internal view returns (bytes32) {
         string memory file = "test/fixtures/tornadocash/shield.json";
