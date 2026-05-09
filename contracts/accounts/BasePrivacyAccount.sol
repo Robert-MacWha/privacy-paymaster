@@ -20,6 +20,7 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
     error OnlySelf();
 
     // ----- EVENTS -----
+    event TailCallsExecuted();
     event TailCallFailed(bytes reason);
 
     // ----- IMMUTABLES -----
@@ -70,7 +71,7 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         // Tail calls are executed atomically after fee payment. If any tail call
         // reverts, all are reverted but the fee payment still goes through.
         try this._executeTailCalls(tail) {
-            // all tail calls succeeded
+            emit TailCallsExecuted();
         } catch (bytes memory reason) {
             emit TailCallFailed(reason);
         }

@@ -1,31 +1,201 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-// Hardcoded fixtures for RailgunAccount tests.
+import {Vm} from "forge-std/Vm.sol";
+import {stdJson} from "forge-std/StdJson.sol";
+
+import {
+    Transaction,
+    BoundParams,
+    CommitmentCiphertext,
+    CommitmentPreimage,
+    TokenData,
+    TokenType,
+    SnarkProof,
+    G1Point,
+    G2Point,
+    UnshieldType,
+    ShieldRequest,
+    ShieldCiphertext
+} from "../../contracts/accounts/railgun/Globals.sol";
+
 library RailgunFixtures {
-    // ----- Network / fork config -----
+    using stdJson for string;
+    Vm constant vm = Vm(address(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D));
+
     uint256 internal constant FORK_BLOCK = 10100000;
 
-    // Sepolia EntryPoint v0.8.0.
-    address internal constant ENTRY_POINT_ADDR =
-        0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108;
-
-    // Sepolia RailgunSmartWallet proxy
-    address internal constant RAILGUN_SMART_WALLET_ADDR =
-        0xeCFCf3b4eC647c4Ca6D49108b311b7a7C9543fea;
-
-    // Sepolia WETH
-    address internal constant WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
-
-    address payable internal constant PAYMASTER =
-        payable(address(0x2C6ddd76DD36CDdE9CB967a8ae66767b456EB1Ba));
-    bytes32 internal constant MASTER_PUBLIC_KEY =
-        hex"19acdde26147205d58fd7768be7c011f08a147ef86e6b70968d09c81cef74b13";
-
-    bytes internal constant PAYMASTER_AND_DATA_PREFIX = hex"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes internal constant PAYMASTER_AND_DATA_VALUE = hex"1b82476ce9817694ef807ea95459994800000000000000000000000000000000000000000000000000000000fff9976782d46cc05630d1f6ebab18b2324d6b140000000000000000000000000000000000000000000000000007ab3d8927f87a";
-    
-    function paymasterAndData() internal pure returns (bytes memory) {
-        return bytes.concat(PAYMASTER_AND_DATA_PREFIX, PAYMASTER_AND_DATA_VALUE);
+    function loadPaymasterAndData() internal view returns (bytes memory) {
+        string memory file = "test/fixtures/railgun/paymasterAndData.json";
+        string memory json = vm.readFile(file);
+        return vm.parseJsonBytes(json, ".paymasterAndData");
     }
+
+    function loadShield() internal view returns (ShieldRequest memory) {
+        string memory file = "test/fixtures/railgun/shield.json";
+        string memory json = vm.readFile(file);
+
+        return
+            ShieldRequest({
+                ciphertext: ShieldCiphertext({
+                    encryptedBundle: [
+                        vm.parseJsonBytes32(
+                            json,
+                            ".ciphertext.encryptedBundle[0]"
+                        ),
+                        vm.parseJsonBytes32(
+                            json,
+                            ".ciphertext.encryptedBundle[1]"
+                        ),
+                        vm.parseJsonBytes32(
+                            json,
+                            ".ciphertext.encryptedBundle[2]"
+                        )
+                    ],
+                    shieldKey: vm.parseJsonBytes32(
+                        json,
+                        ".ciphertext.shieldKey"
+                    )
+                }),
+                preimage: CommitmentPreimage({
+                    npk: vm.parseJsonBytes32(json, ".preimage.npk"),
+                    token: TokenData({
+                        tokenType: TokenType(
+                            vm.parseJsonUint(json, ".preimage.token.tokenType")
+                        ),
+                        tokenAddress: vm.parseJsonAddress(
+                            json,
+                            ".preimage.token.tokenAddress"
+                        ),
+                        tokenSubID: vm.parseJsonUint(
+                            json,
+                            ".preimage.token.tokenSubID"
+                        )
+                    }),
+                    value: uint120(vm.parseJsonUint(json, ".preimage.value"))
+                })
+            });
+    }
+
+    function loadTransaction() internal view returns (Transaction memory t) {
+        string memory file = "test/fixtures/railgun/transaction.json";
+        string memory json = vm.readFile(file);
+
+        t.merkleRoot = json.readBytes32(".merkleRoot");
+        t.nullifiers = json.readBytes32Array(".nullifiers");
+        t.commitments = json.readBytes32Array(".commitments");
+        t.proof = loadProof(json, ".proof");
+        t.boundParams = loadBoundParams(json, ".boundParams");
+        t.unshieldPreimage = loadPreimage(json, ".unshieldPreimage");
+    }
+
+    function loadProof(
+        string memory json,
+        string memory prefix
+    ) internal pure returns (SnarkProof memory p) {
+        p.a = G1Point({
+            x: json.readUint(string.concat(prefix, ".a.x")),
+            y: json.readUint(string.concat(prefix, ".a.y"))
+        });
+        p.b = G2Point({
+            x: [
+                json.readUint(string.concat(prefix, ".b.x[0]")),
+                json.readUint(string.concat(prefix, ".b.x[1]"))
+            ],
+            y: [
+                json.readUint(string.concat(prefix, ".b.y[0]")),
+                json.readUint(string.concat(prefix, ".b.y[1]"))
+            ]
+        });
+        p.c = G1Point({
+            x: json.readUint(string.concat(prefix, ".c.x")),
+            y: json.readUint(string.concat(prefix, ".c.y"))
+        });
+    }
+
+    function loadBoundParams(
+        string memory json,
+        string memory prefix
+    ) internal pure returns (BoundParams memory bp) {
+        bp.treeNumber = uint16(
+            json.readUint(string.concat(prefix, ".treeNumber"))
+        );
+        bp.minGasPrice = uint72(
+            json.readUint(string.concat(prefix, ".minGasPrice"))
+        );
+        bp.unshield = UnshieldType(
+            json.readUint(string.concat(prefix, ".unshield"))
+        );
+        bp.chainID = uint64(json.readUint(string.concat(prefix, ".chainID")));
+        bp.adaptContract = json.readAddress(
+            string.concat(prefix, ".adaptContract")
+        );
+        bp.adaptParams = json.readBytes32(
+            string.concat(prefix, ".adaptParams")
+        );
+
+        uint256 len = abi
+            .decode(
+                vm.parseJson(
+                    json,
+                    string.concat(prefix, ".commitmentCiphertext")
+                ),
+                (bytes[])
+            )
+            .length;
+        bp.commitmentCiphertext = new CommitmentCiphertext[](len);
+        for (uint256 i = 0; i < len; i++) {
+            string memory cp = string.concat(
+                prefix,
+                ".commitmentCiphertext[",
+                vm.toString(i),
+                "]"
+            );
+            bp.commitmentCiphertext[i] = loadCiphertext(json, cp);
+        }
+    }
+
+    function loadCiphertext(
+        string memory json,
+        string memory prefix
+    ) internal pure returns (CommitmentCiphertext memory c) {
+        c.ciphertext = [
+            json.readBytes32(string.concat(prefix, ".ciphertext[0]")),
+            json.readBytes32(string.concat(prefix, ".ciphertext[1]")),
+            json.readBytes32(string.concat(prefix, ".ciphertext[2]")),
+            json.readBytes32(string.concat(prefix, ".ciphertext[3]"))
+        ];
+        c.blindedSenderViewingKey = json.readBytes32(
+            string.concat(prefix, ".blindedSenderViewingKey")
+        );
+        c.blindedReceiverViewingKey = json.readBytes32(
+            string.concat(prefix, ".blindedReceiverViewingKey")
+        );
+        c.annotationData = json.readBytes(
+            string.concat(prefix, ".annotationData")
+        );
+        c.memo = json.readBytes(string.concat(prefix, ".memo"));
+    }
+
+    function loadPreimage(
+        string memory json,
+        string memory prefix
+    ) internal pure returns (CommitmentPreimage memory p) {
+        p.npk = json.readBytes32(string.concat(prefix, ".npk"));
+        p.token = TokenData({
+            tokenType: TokenType(
+                json.readUint(string.concat(prefix, ".token.tokenType"))
+            ),
+            tokenAddress: json.readAddress(
+                string.concat(prefix, ".token.tokenAddress")
+            ),
+            tokenSubID: json.readUint(
+                string.concat(prefix, ".token.tokenSubID")
+            )
+        });
+        p.value = uint120(json.readUint(string.concat(prefix, ".value")));
+    }
+
+    //? Ignore in forge coverage
+    function test() public {}
 }
