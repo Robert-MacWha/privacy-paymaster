@@ -25,7 +25,7 @@ library Deployments {
         string memory field
     ) internal view returns (address) {
         string memory p = path();
-        require(vm.exists(p), "no deployment file");
+        require(vm.exists(p), string.concat("no deployment file", p));
 
         string memory json = vm.readFile(p);
         return

@@ -25,7 +25,7 @@ library Chains {
         string memory field
     ) internal view returns (address) {
         string memory p = path();
-        require(vm.exists(p), "no deployment file");
+        require(vm.exists(p), string.concat("no chain file", p));
 
         string memory toml = vm.readFile(p);
         return
@@ -37,7 +37,7 @@ library Chains {
         string memory field
     ) internal view returns (uint256) {
         string memory p = path();
-        require(vm.exists(p), "no deployment file");
+        require(vm.exists(p), string.concat("no chain file", p));
 
         string memory toml = vm.readFile(p);
         return vm.parseTomlUint(toml, string.concat(".", section, ".", field));
@@ -48,7 +48,7 @@ library Chains {
         string memory field
     ) internal view returns (bytes32) {
         string memory p = path();
-        require(vm.exists(p), "no deployment file");
+        require(vm.exists(p), string.concat("no chain file", p));
 
         string memory toml = vm.readFile(p);
         return
