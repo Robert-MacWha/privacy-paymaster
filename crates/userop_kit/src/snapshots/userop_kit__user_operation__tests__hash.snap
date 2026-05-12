@@ -1,6 +1,6 @@
 ---
 source: crates/userop_kit/src/user_operation.rs
-assertion_line: 256
+assertion_line: 172
 expression: hash
 ---
-0xa763cdf6c11eee14cea4d32863d184afe29859b556c85b7ae6f11f64f8945492
+0x2634335769824553647d0f1f10857a4312d7846d1fd304d207dd8c2cd32bda3c

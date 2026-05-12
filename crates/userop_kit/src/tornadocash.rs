@@ -1,6 +1,9 @@
-use alloy::{primitives::Bytes, sol_types::SolCall};
+use alloy::{
+    primitives::{Address, Bytes},
+    sol_types::SolCall,
+};
 
-use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
+use crate::{abis::privacy_account::IPrivacyAccount, builder::UserOperationBuilder};
 
 pub struct TornadoCashProtocol {
     withdraw_calldata: Bytes,
@@ -14,13 +17,13 @@ impl UserOperationBuilder<TornadoCashProtocol> {
     /// Create a new Tornado Cash UserOperationBuilder with the given sender and withdraw calldata.
     ///
     /// withdraw_calldata should be `Tornado::withdrawCall::abi_encode((proof, root, nullifierHash, recipient, relayer, fee, refund))`
-    pub fn new_tornadocash(withdraw_calldata: Bytes) -> Self {
+    pub fn new_tornadocash(sender: Address, withdraw_calldata: Bytes) -> Self {
         let protocol = TornadoCashProtocol {
             withdraw_calldata,
             tail_calls: Vec::new(),
         };
 
-        let builder = UserOperationBuilder::new_with(protocol);
+        let builder = UserOperationBuilder::new_with(sender, protocol);
         builder.update_calldata()
     }
 

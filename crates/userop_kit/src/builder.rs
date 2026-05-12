@@ -1,6 +1,5 @@
-use alloy::eips::eip7702::SignedAuthorization;
 use alloy::primitives::{Address, Bytes, U256};
-use alloy::signers::Signer;
+use alloy::rpc::types::Authorization;
 
 use crate::bundler::{BundlerError, BundlerProvider};
 use crate::{UserOperation, UserOperationGasEstimate};
@@ -13,17 +12,17 @@ pub struct UserOperationBuilder<P = ()> {
 }
 
 impl<P> UserOperationBuilder<P> {
-    pub fn new_with(protocol: P) -> Self {
+    pub fn new_with(sender: Address, protocol: P) -> Self {
         Self {
             op: UserOperation {
-                sender: Address::ZERO,
+                sender,
                 nonce: U256::ZERO,
                 factory: None,
                 factory_data: None,
                 call_data: Bytes::new(),
                 call_gas_limit: 0,
                 verification_gas_limit: 0,
-                pre_verification_gas: U256::ZERO,
+                pre_verification_gas: 0,
                 max_fee_per_gas: 0,
                 max_priority_fee_per_gas: 0,
                 paymaster: None,
@@ -38,13 +37,8 @@ impl<P> UserOperationBuilder<P> {
         }
     }
 
-    pub fn with_sender(mut self, sender: Address) -> Self {
-        self.set_sender(sender);
-        self
-    }
-
-    pub fn set_sender(&mut self, sender: Address) {
-        self.op.sender = sender;
+    pub fn total_gas_limit(&self) -> u128 {
+        self.op.total_gas_limit()
     }
 
     pub fn with_calldata(mut self, calldata: Bytes) -> Self {
@@ -74,15 +68,6 @@ impl<P> UserOperationBuilder<P> {
         self.op.paymaster_data = Some(data);
     }
 
-    pub fn with_signature(mut self, sig: Bytes) -> Self {
-        self.set_signature(sig);
-        self
-    }
-
-    pub fn set_signature(&mut self, sig: Bytes) {
-        self.op.signature = sig;
-    }
-
     pub fn with_nonce(mut self, nonce: U256) -> Self {
         self.set_nonce(nonce);
         self
@@ -92,12 +77,12 @@ impl<P> UserOperationBuilder<P> {
         self.op.nonce = nonce;
     }
 
-    pub fn with_authorization(mut self, auth: SignedAuthorization) -> Self {
+    pub fn with_authorization(mut self, auth: Authorization) -> Self {
         self.set_authorization(auth);
         self
     }
 
-    pub fn set_authorization(&mut self, auth: SignedAuthorization) {
+    pub fn set_authorization(&mut self, auth: Authorization) {
         self.op.authorization = Some(auth);
     }
 
@@ -111,6 +96,19 @@ impl<P> UserOperationBuilder<P> {
         self
     }
 
+    /// Fetches a gas estimate from the provider for the current UserOp.
+    pub async fn with_gas_estimate(
+        mut self,
+        bundler: &impl BundlerProvider,
+    ) -> Result<Self, BundlerError> {
+        let est = bundler.estimate_gas(&self.op).await?;
+        let max_fee = bundler.suggest_max_fee_per_gas().await?;
+        let max_priority_fee = bundler.suggest_max_priority_fee_per_gas().await?;
+
+        self.set_gas(est, max_fee, max_priority_fee);
+        Ok(self)
+    }
+
     pub fn set_gas(
         &mut self,
         gas: UserOperationGasEstimate,
@@ -119,14 +117,11 @@ impl<P> UserOperationBuilder<P> {
     ) {
         self.gas_set = true;
 
-        self.op.call_gas_limit = gas.call_gas_limit.saturating_to();
-        self.op.verification_gas_limit = gas.verification_gas_limit.saturating_to();
-        self.op.pre_verification_gas = gas.pre_verification_gas.saturating_to();
-        self.op.paymaster_verification_gas_limit = gas
-            .paymaster_verification_gas_limit
-            .map(|v| v.saturating_to());
-        self.op.paymaster_post_op_gas_limit =
-            gas.paymaster_post_op_gas_limit.map(|v| v.saturating_to());
+        self.op.call_gas_limit = gas.call_gas_limit;
+        self.op.verification_gas_limit = gas.verification_gas_limit;
+        self.op.pre_verification_gas = gas.pre_verification_gas;
+        self.op.paymaster_verification_gas_limit = gas.paymaster_verification_gas_limit;
+        self.op.paymaster_post_op_gas_limit = gas.paymaster_post_op_gas_limit;
         self.op.max_fee_per_gas = max_fee_per_gas;
         self.op.max_priority_fee_per_gas = max_priority_fee_per_gas;
     }
@@ -137,33 +132,7 @@ impl<P> UserOperationBuilder<P> {
         self
     }
 
-    /// Build a complete `UserOperation` ready for submission.
-    pub async fn build(
-        mut self,
-        sender: &impl Signer,
-        provider: &impl BundlerProvider,
-    ) -> Result<UserOperation, BundlerError> {
-        self.op.sender = sender.address();
-
-        if !self.gas_set {
-            self.estimate_gas(provider).await?;
-        }
-
-        let hash = self.op.packed().hash(&provider.eip712_domain());
-        self.op.signature = sender.sign_hash(&hash).await.unwrap().as_bytes().into();
-
-        Ok(self.op)
-    }
-
-    pub async fn estimate_gas(
-        &mut self,
-        provider: &impl BundlerProvider,
-    ) -> Result<(UserOperationGasEstimate, u128, u128), BundlerError> {
-        let est = provider.estimate_gas(&self.op).await?;
-        let max_fee = provider.suggest_max_fee_per_gas().await?;
-        let max_priority_fee = provider.suggest_max_priority_fee_per_gas().await?;
-
-        self.set_gas(est, max_fee, max_priority_fee);
-        Ok((est, max_fee, max_priority_fee))
+    pub fn build(self) -> UserOperation {
+        self.op
     }
 }

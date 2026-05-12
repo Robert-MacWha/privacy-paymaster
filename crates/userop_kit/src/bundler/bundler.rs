@@ -1,7 +1,10 @@
 use alloy::{primitives::Address, sol_types::Eip712Domain};
 use thiserror::Error;
 
-use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
+use crate::{
+    UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt,
+    signed_user_operation::SignedUserOperation,
+};
 
 #[derive(Debug, Error)]
 pub enum BundlerError {
@@ -28,7 +31,7 @@ pub trait BundlerProvider {
     ) -> impl std::future::Future<Output = Result<UserOperationGasEstimate, BundlerError>>;
     fn send_user_operation(
         &self,
-        op: &UserOperation,
+        op: &SignedUserOperation,
     ) -> impl std::future::Future<Output = Result<UserOperationHash, BundlerError>>;
     fn wait_for_receipt(
         &self,

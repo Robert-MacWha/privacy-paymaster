@@ -1,11 +1,10 @@
 use alloy::{
-    eips::eip7702::{Authorization, SignedAuthorization},
+    eips::eip7702::Authorization,
     primitives::{Address, B128, Bytes, U256, address, aliases::U120},
-    signers::Signer,
     sol_types::{SolCall, SolValue},
 };
 
-use crate::{UserOperationBuilder, abis::privacy_account::IPrivacyAccount};
+use crate::{abis::privacy_account::IPrivacyAccount, builder::UserOperationBuilder};
 
 pub struct RailgunProtocol {
     fee_calldata: Bytes,
@@ -21,13 +20,19 @@ impl UserOperationBuilder<RailgunProtocol> {
     ///
     /// fee_calldata should be the RailgunSmartWallet::transactCall::abi_encode((fee_transaction)) containing
     /// a single transaction that pays the fee.
-    pub fn new_railgun(fee_calldata: Bytes, random: B128, asset: Address, value: u128) -> Self {
+    pub fn new_railgun(
+        sender: Address,
+        fee_calldata: Bytes,
+        random: B128,
+        asset: Address,
+        value: u128,
+    ) -> Self {
         let protocol = RailgunProtocol {
             fee_calldata,
             tail_calls: Vec::new(),
         };
 
-        let builder = UserOperationBuilder::new_with(protocol)
+        let builder = UserOperationBuilder::new_with(sender, protocol)
             .with_paymaster(PAYMASTER)
             .with_paymaster_data(
                 (random, asset, U120::saturating_from(value))
@@ -52,20 +57,11 @@ impl UserOperationBuilder<RailgunProtocol> {
     }
 }
 
-/// Creates and signs a Railgun authorization for the given signer, chain ID, and nonce,
-/// setting the address to the standard Railgun withdrawer impl.
-pub async fn sign_railgun_authorization(
-    signer: &impl Signer,
-    chain_id: u64,
-    nonce: u64,
-) -> Result<SignedAuthorization, alloy::signers::Error> {
-    let auth = railgun_authorization(chain_id, nonce);
-    let sig = signer.sign_hash(&auth.signature_hash()).await?;
-    Ok(auth.into_signed(sig))
-}
-
 /// Creates a Railgun authorization for the given chain ID and nonce,
 /// setting the address to the standard Railgun withdrawer impl.
+///
+/// TODO: Consider moving this into the `new_railgun` constructor since I
+/// can't think of any use cases where it isn't needed.
 pub fn railgun_authorization(chain_id: u64, nonce: u64) -> Authorization {
     Authorization {
         chain_id: U256::from(chain_id),

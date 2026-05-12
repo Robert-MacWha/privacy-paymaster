@@ -4,9 +4,10 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::bundler::BundlerProvider;
 use crate::bundler::bundler::BundlerError;
+use crate::bundler::bundler::BundlerProvider;
 use crate::bundler::rpc_client::{RpcClient, RpcClientError};
+use crate::signed_user_operation::SignedUserOperation;
 use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
 
 pub struct PimlicoBundler {
@@ -115,7 +116,7 @@ impl BundlerProvider for PimlicoBundler {
 
     async fn send_user_operation(
         &self,
-        op: &UserOperation,
+        op: &SignedUserOperation,
     ) -> Result<UserOperationHash, BundlerError> {
         info!("Sending user operation to Pimlico...");
         let hash: B256 = self
