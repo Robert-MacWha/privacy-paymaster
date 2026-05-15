@@ -1,5 +1,4 @@
-use alloy::primitives::{Address, B256};
-use alloy::sol_types::{Eip712Domain, eip712_domain};
+use alloy::primitives::B256;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -12,9 +11,6 @@ use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOper
 
 pub struct PimlicoBundler {
     client: RpcClient,
-    chain_id: u64,
-    entry_point: Address,
-    domain: Eip712Domain,
 }
 
 /// Errors from the bundler SDK.
@@ -45,40 +41,16 @@ struct PimlicoSpeedGasEstimate {
 }
 
 impl PimlicoBundler {
-    pub fn new(bundler_url: Url, chain_id: u64, entry_point: Address) -> Self {
-        let domain = eip712_domain! {
-            name: "ERC4337",
-            version: "1",
-            chain_id: chain_id,
-            verifying_contract: entry_point,
-        };
-
+    pub fn new(bundler_url: Url) -> Self {
         Self {
             client: RpcClient::new(bundler_url),
-            chain_id,
-            entry_point,
-            domain,
         }
-    }
-
-    pub fn set_eip712_domain(&mut self, domain: Eip712Domain) {
-        self.domain = domain;
     }
 }
 
+#[cfg_attr(native, async_trait::async_trait)]
+#[cfg_attr(wasm, async_trait::async_trait(?Send))]
 impl BundlerProvider for PimlicoBundler {
-    fn chain_id(&self) -> u64 {
-        self.chain_id
-    }
-
-    fn entry_point(&self) -> Address {
-        self.entry_point
-    }
-
-    fn eip712_domain(&self) -> Eip712Domain {
-        self.domain.clone()
-    }
-
     async fn suggest_max_fee_per_gas(&self) -> Result<u128, BundlerError> {
         info!("Requesting max fee estimate from Pimlico...");
         let estimate: PimlicoUserOperationGasEstimate = self
@@ -109,7 +81,7 @@ impl BundlerProvider for PimlicoBundler {
 
         Ok(self
             .client
-            .request("eth_estimateUserOperationGas", (op, self.entry_point))
+            .request("eth_estimateUserOperationGas", (op, op.entry_point))
             .await
             .map_err(|e| BundlerError::Other(Box::new(e)))?)
     }
@@ -121,7 +93,7 @@ impl BundlerProvider for PimlicoBundler {
         info!("Sending user operation to Pimlico...");
         let hash: B256 = self
             .client
-            .request("eth_sendUserOperation", (op, self.entry_point))
+            .request("eth_sendUserOperation", (op, op.entry_point))
             .await
             .map_err(|e| BundlerError::Other(Box::new(e)))?;
 

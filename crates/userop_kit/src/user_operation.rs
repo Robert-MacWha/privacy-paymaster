@@ -1,46 +1,59 @@
 use alloy::{
     eips::eip7702::Authorization,
     primitives::{Address, B256, Bytes, U256},
-    rpc::types::{Log, ReceiptWithBloom, TransactionReceipt},
+    rpc::types::{Log, ReceiptWithBloom, SignedAuthorization, TransactionReceipt},
     signers::Signer,
-    sol_types::{Eip712Domain, SolStruct},
 };
+use alloy_sol_types::{Eip712Domain, SolStruct};
 use serde::{Deserialize, Serialize};
 
-use crate::{abis::entry_point::PackedUserOperation, signed_user_operation::SignedUserOperation};
+use crate::{SignedUserOperation, abis::entry_point::PackedUserOperation};
 
-/// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.
+/// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
-#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[cfg_attr(js, derive(tsify::Tsify))]
+#[cfg_attr(js, tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperation {
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub sender: Address,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub nonce: U256,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub factory: Option<Address>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub factory_data: Option<Bytes>,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub call_data: Bytes,
 
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub call_gas_limit: u128,
 
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub verification_gas_limit: u128,
 
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub pre_verification_gas: u128,
 
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub max_fee_per_gas: u128,
 
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub max_priority_fee_per_gas: u128,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster: Option<Address>,
 
     #[serde(
@@ -48,6 +61,7 @@ pub struct UserOperation {
         skip_serializing_if = "Option::is_none",
         with = "alloy::serde::quantity::opt"
     )]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_verification_gas_limit: Option<u128>,
 
     #[serde(
@@ -55,60 +69,88 @@ pub struct UserOperation {
         skip_serializing_if = "Option::is_none",
         with = "alloy::serde::quantity::opt"
     )]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_post_op_gas_limit: Option<u128>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_data: Option<Bytes>,
 
     #[serde(rename = "eip7702Auth", skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
 
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub signature: Bytes,
+
+    pub entry_point: Address,
+    pub domain: Eip712Domain,
 }
 
 /// A submitted user operation hash.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
-#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[cfg_attr(js, derive(tsify::Tsify))]
+#[cfg_attr(js, tsify(into_wasm_abi, from_wasm_abi, type = "`0x${string}`"))]
 pub struct UserOperationHash(pub B256);
 
 /// Gas estimates returned by `eth_estimateUserOperationGas`.
 ///
 /// EntryPoint 0.7 & 0.8
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
-#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[cfg_attr(js, derive(tsify::Tsify))]
+#[cfg_attr(js, tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperationGasEstimate {
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub pre_verification_gas: u128,
+
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub verification_gas_limit: u128,
+
     #[serde(with = "alloy::serde::quantity")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub call_gas_limit: u128,
+
     #[serde(default, with = "alloy::serde::quantity::opt")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_verification_gas_limit: Option<u128>,
+
     #[serde(default, with = "alloy::serde::quantity::opt")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_post_op_gas_limit: Option<u128>,
 }
 
 /// Receipt returned by `eth_getUserOperationReceipt`.
 ///
 /// EntryPoint 0.7 & 0.8
-///
-/// TODO: Add logs and receipt fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(target_arch = "wasm32", derive(tsify::Tsify))]
-#[cfg_attr(target_arch = "wasm32", tsify(into_wasm_abi, from_wasm_abi))]
+#[cfg_attr(js, derive(tsify::Tsify))]
+#[cfg_attr(js, tsify(into_wasm_abi, from_wasm_abi))]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperationReceipt {
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub entry_point: Address,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub user_op_hash: B256,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub sender: Address,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub nonce: U256,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub actual_gas_used: U256,
+
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub actual_gas_cost: U256,
+
     pub success: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub reason: Option<Bytes>,
     pub logs: Vec<Log>,
     pub receipt: TransactionReceipt<ReceiptWithBloom>,
@@ -128,13 +170,37 @@ impl UserOperation {
         total
     }
 
-    pub async fn signed(
-        &self,
+    pub fn eip712_signing_hash(&self) -> B256 {
+        PackedUserOperation::from(self).eip712_signing_hash(&self.domain)
+    }
+
+    pub fn authorization_signing_hash(&self) -> Option<B256> {
+        self.authorization
+            .as_ref()
+            .map(|auth| auth.signature_hash())
+    }
+
+    /// Convert to a SignedUserOperation
+    pub fn into_signed(
+        self,
+        signature: Bytes,
+        authorization: Option<SignedAuthorization>,
+    ) -> SignedUserOperation {
+        let entry_point = self.entry_point;
+        SignedUserOperation {
+            user_op: self,
+            signature,
+            authorization,
+            entry_point,
+        }
+    }
+
+    /// Signs the UserOperation with the provided signer and EIP-712 domain
+    pub async fn sign(
+        self,
         signer: &impl Signer,
-        domain: &Eip712Domain,
     ) -> Result<SignedUserOperation, alloy::signers::Error> {
-        let packed = PackedUserOperation::from(self);
-        let domain_hash = packed.eip712_signing_hash(domain);
+        let domain_hash = self.eip712_signing_hash();
         let userop_sig = signer.sign_hash(&domain_hash).await?.as_bytes().into();
 
         let authorization = if let Some(auth) = self.authorization.clone() {
@@ -145,15 +211,17 @@ impl UserOperation {
             None
         };
 
+        let entry_point = self.entry_point;
         Ok(SignedUserOperation {
-            user_op: self.clone(),
+            user_op: self,
             signature: userop_sig,
             authorization,
+            entry_point,
         })
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, native))]
 mod tests {
     use alloy::{
         primitives::{address, b256},

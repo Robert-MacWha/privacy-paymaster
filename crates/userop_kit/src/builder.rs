@@ -1,5 +1,6 @@
 use alloy::primitives::{Address, Bytes, U256};
 use alloy::rpc::types::Authorization;
+use alloy_sol_types::Eip712Domain;
 
 use crate::bundler::{BundlerError, BundlerProvider};
 use crate::{UserOperation, UserOperationGasEstimate};
@@ -12,7 +13,12 @@ pub struct UserOperationBuilder<P = ()> {
 }
 
 impl<P> UserOperationBuilder<P> {
-    pub fn new_with(sender: Address, protocol: P) -> Self {
+    pub fn new_with(
+        sender: Address,
+        entry_point: Address,
+        domain: Eip712Domain,
+        protocol: P,
+    ) -> Self {
         Self {
             op: UserOperation {
                 sender,
@@ -31,6 +37,8 @@ impl<P> UserOperationBuilder<P> {
                 paymaster_data: None,
                 signature: Bytes::new(),
                 authorization: None,
+                entry_point,
+                domain,
             },
             protocol,
             gas_set: false,
@@ -99,11 +107,13 @@ impl<P> UserOperationBuilder<P> {
     /// Fetches a gas estimate from the provider for the current UserOp.
     pub async fn with_gas_estimate(
         mut self,
-        bundler: &impl BundlerProvider,
+        bundler: &dyn BundlerProvider,
     ) -> Result<Self, BundlerError> {
-        let est = bundler.estimate_gas(&self.op).await?;
-        let max_fee = bundler.suggest_max_fee_per_gas().await?;
-        let max_priority_fee = bundler.suggest_max_priority_fee_per_gas().await?;
+        let (est, max_fee, max_priority_fee) = futures::try_join!(
+            bundler.estimate_gas(&self.op),
+            bundler.suggest_max_fee_per_gas(),
+            bundler.suggest_max_priority_fee_per_gas()
+        )?;
 
         self.set_gas(est, max_fee, max_priority_fee);
         Ok(self)

@@ -1,4 +1,3 @@
-use alloy::{primitives::Address, sol_types::Eip712Domain};
 use thiserror::Error;
 
 use crate::{
@@ -14,27 +13,21 @@ pub enum BundlerError {
     Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
+#[cfg_attr(native, async_trait::async_trait)]
+#[cfg_attr(wasm, async_trait::async_trait(?Send))]
 pub trait BundlerProvider {
-    fn chain_id(&self) -> u64;
-    fn entry_point(&self) -> Address;
-    fn eip712_domain(&self) -> Eip712Domain;
-
-    fn suggest_max_fee_per_gas(
-        &self,
-    ) -> impl std::future::Future<Output = Result<u128, BundlerError>>;
-    fn suggest_max_priority_fee_per_gas(
-        &self,
-    ) -> impl std::future::Future<Output = Result<u128, BundlerError>>;
-    fn estimate_gas(
+    async fn suggest_max_fee_per_gas(&self) -> Result<u128, BundlerError>;
+    async fn suggest_max_priority_fee_per_gas(&self) -> Result<u128, BundlerError>;
+    async fn estimate_gas(
         &self,
         op: &UserOperation,
-    ) -> impl std::future::Future<Output = Result<UserOperationGasEstimate, BundlerError>>;
-    fn send_user_operation(
+    ) -> Result<UserOperationGasEstimate, BundlerError>;
+    async fn send_user_operation(
         &self,
         op: &SignedUserOperation,
-    ) -> impl std::future::Future<Output = Result<UserOperationHash, BundlerError>>;
-    fn wait_for_receipt(
+    ) -> Result<UserOperationHash, BundlerError>;
+    async fn wait_for_receipt(
         &self,
         hash: UserOperationHash,
-    ) -> impl std::future::Future<Output = Result<UserOperationReceipt, BundlerError>>;
+    ) -> Result<UserOperationReceipt, BundlerError>;
 }

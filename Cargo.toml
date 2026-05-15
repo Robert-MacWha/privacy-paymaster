@@ -11,13 +11,20 @@ alloy = { version = "1.8", default-features = false, features = [
     "sol-types",
     "rpc-types",
 ] }
+alloy-sol-types = { version = "1.5", default-features = false, features = [
+    "eip712-serde",
+] }
+async-trait = "0.1.89"
+futures = "0.3.32"
 reqwest = { version = "0.13", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 tracing = "0.1"
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 tsify = "0.5"
 gloo-timers = { version = "0.3", features = ["futures"] }
 getrandom = { version = "0.2", features = ["js"] }
 tokio = { version = "1", features = ["time"] }
+cfg_aliases = "0.2.0"
