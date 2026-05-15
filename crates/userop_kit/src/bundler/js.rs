@@ -24,7 +24,7 @@ impl JsBundler {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Bundler")]
 impl JsBundler {
     /// Creates a new Pimlico bundler provider.
     #[wasm_bindgen(js_name = "pimlico")]
@@ -35,10 +35,7 @@ impl JsBundler {
             inner: Arc::new(PimlicoBundler::new(bundler_url)),
         })
     }
-}
 
-#[wasm_bindgen]
-impl JsBundler {
     #[wasm_bindgen(js_name = "suggestMaxFeePerGas")]
     pub async fn suggest_max_fee_per_gas(&self) -> Result<u128, JsError> {
         self.inner
