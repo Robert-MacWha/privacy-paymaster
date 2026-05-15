@@ -1,7 +1,7 @@
 use alloy::{
     eips::eip7702::Authorization,
     primitives::{Address, B256, Bytes, U256},
-    rpc::types::{Log, ReceiptWithBloom, SignedAuthorization, TransactionReceipt},
+    rpc::types::{Log, ReceiptWithBloom, TransactionReceipt},
     signers::Signer,
 };
 use alloy_sol_types::{Eip712Domain, SolStruct};
@@ -157,26 +157,21 @@ pub struct UserOperationReceipt {
 }
 
 impl UserOperation {
-    /// Returns the total gas estimate, including paymaster gas if applicable.
-    pub fn total_gas_limit(&self) -> u128 {
-        let mut total =
-            self.pre_verification_gas + self.verification_gas_limit + self.call_gas_limit;
-        if let Some(paymaster_verification_gas_limit) = self.paymaster_verification_gas_limit {
-            total += paymaster_verification_gas_limit;
-        }
-        if let Some(paymaster_post_op_gas_limit) = self.paymaster_post_op_gas_limit {
-            total += paymaster_post_op_gas_limit;
-        }
-        total
+    /// Computes the EIP-712 signing hash for this UserOperation
+    pub fn signing_hash(&self) -> B256 {
+        PackedUserOperation::from(self).eip712_signing_hash(&self.domain)
     }
 
-    /// Signs the UserOperation with the provided signer and EIP-712 domain
+    /// Signs the UserOperation with the provided signer
     pub async fn sign(
         self,
         signer: &impl Signer,
     ) -> Result<SignedUserOperation, alloy::signers::Error> {
-        let domain_hash = PackedUserOperation::from(&self).eip712_signing_hash(&self.domain);
-        let userop_sig = signer.sign_hash(&domain_hash).await?.as_bytes().into();
+        let userop_sig = signer
+            .sign_hash(&self.signing_hash())
+            .await?
+            .as_bytes()
+            .into();
 
         let authorization = if let Some(auth) = self.authorization.clone() {
             let authorization_hash = auth.signature_hash();
@@ -194,6 +189,19 @@ impl UserOperation {
             entry_point,
         })
     }
+
+    /// Returns the total gas estimate, including paymaster gas if applicable.
+    pub fn total_gas_limit(&self) -> u128 {
+        let mut total =
+            self.pre_verification_gas + self.verification_gas_limit + self.call_gas_limit;
+        if let Some(paymaster_verification_gas_limit) = self.paymaster_verification_gas_limit {
+            total += paymaster_verification_gas_limit;
+        }
+        if let Some(paymaster_post_op_gas_limit) = self.paymaster_post_op_gas_limit {
+            total += paymaster_post_op_gas_limit;
+        }
+        total
+    }
 }
 
 #[cfg(all(test, native))]
@@ -204,7 +212,7 @@ mod tests {
         sol_types::SolStruct,
     };
 
-    use crate::entry_point::ENTRY_POINT_08_DOMAIN;
+    use crate::entry_point::{ENTRY_POINT_08, entry_point_08_domain};
 
     use super::*;
 
@@ -234,19 +242,18 @@ mod tests {
     #[tokio::test]
     async fn test_sign() {
         let op = test_user_operation();
-        let domain = ENTRY_POINT_08_DOMAIN;
         let signer = PrivateKeySigner::from_bytes(&b256!(
             "0x00000000000000000000000000000000000000000000000000000000DEADBEEF"
         ))
         .unwrap();
 
-        let packed = PackedUserOperation::from(&op);
-        let signed = op.signed(&signer, &domain).await.unwrap();
+        let signing_hash = op.signing_hash();
+        let signed = op.sign(&signer).await.unwrap();
         let signature = signed.signature();
         insta::assert_debug_snapshot!(signature);
 
         let recovered = signature
-            .recover_address_from_prehash(&packed.eip712_signing_hash(&domain))
+            .recover_address_from_prehash(&signing_hash)
             .unwrap();
         assert_eq!(
             recovered,
@@ -273,6 +280,8 @@ mod tests {
             paymaster_post_op_gas_limit: Some(30_000),
             paymaster_data: Some(Bytes::from_static(b"paymaster data")),
             authorization: None,
+            entry_point: ENTRY_POINT_08,
+            domain: entry_point_08_domain(1),
         }
     }
 }
