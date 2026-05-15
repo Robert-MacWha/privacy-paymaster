@@ -45,10 +45,6 @@ impl<P> UserOperationBuilder<P> {
         }
     }
 
-    pub fn total_gas_limit(&self) -> u128 {
-        self.op.total_gas_limit()
-    }
-
     pub fn with_calldata(mut self, calldata: Bytes) -> Self {
         self.set_calldata(calldata);
         self

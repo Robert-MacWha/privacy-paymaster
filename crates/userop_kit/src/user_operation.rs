@@ -170,37 +170,12 @@ impl UserOperation {
         total
     }
 
-    pub fn eip712_signing_hash(&self) -> B256 {
-        PackedUserOperation::from(self).eip712_signing_hash(&self.domain)
-    }
-
-    pub fn authorization_signing_hash(&self) -> Option<B256> {
-        self.authorization
-            .as_ref()
-            .map(|auth| auth.signature_hash())
-    }
-
-    /// Convert to a SignedUserOperation
-    pub fn into_signed(
-        self,
-        signature: Bytes,
-        authorization: Option<SignedAuthorization>,
-    ) -> SignedUserOperation {
-        let entry_point = self.entry_point;
-        SignedUserOperation {
-            user_op: self,
-            signature,
-            authorization,
-            entry_point,
-        }
-    }
-
     /// Signs the UserOperation with the provided signer and EIP-712 domain
     pub async fn sign(
         self,
         signer: &impl Signer,
     ) -> Result<SignedUserOperation, alloy::signers::Error> {
-        let domain_hash = self.eip712_signing_hash();
+        let domain_hash = PackedUserOperation::from(&self).eip712_signing_hash(&self.domain);
         let userop_sig = signer.sign_hash(&domain_hash).await?.as_bytes().into();
 
         let authorization = if let Some(auth) = self.authorization.clone() {
