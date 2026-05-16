@@ -1,6 +1,6 @@
 ---
-source: crates/userop_kit/src/user_operation.rs
-assertion_line: 257
+source: crates/userop_kit/src/signable_user_operation.rs
+assertion_line: 91
 expression: signature
 ---
 Signature {

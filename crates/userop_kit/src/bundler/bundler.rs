@@ -1,8 +1,8 @@
 use thiserror::Error;
 
 use crate::{
-    UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt,
-    signed_user_operation::SignedUserOperation,
+    UserOperationGasEstimate, UserOperationHash, UserOperationReceipt,
+    signable_user_operation::SignableUserOperation, signed_user_operation::SignedUserOperation,
 };
 
 #[derive(Debug, Error)]
@@ -20,7 +20,7 @@ pub trait BundlerProvider {
     async fn suggest_max_priority_fee_per_gas(&self) -> Result<u128, BundlerError>;
     async fn estimate_gas(
         &self,
-        op: &UserOperation,
+        op: &SignableUserOperation,
     ) -> Result<UserOperationGasEstimate, BundlerError>;
     async fn send_user_operation(
         &self,

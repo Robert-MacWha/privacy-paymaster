@@ -1,13 +1,8 @@
 use alloy::{
-    eips::eip7702::Authorization,
     primitives::{Address, B256, Bytes, U256},
     rpc::types::{Log, ReceiptWithBloom, TransactionReceipt},
-    signers::Signer,
 };
-use alloy_sol_types::{Eip712Domain, SolStruct};
 use serde::{Deserialize, Serialize};
-
-use crate::{SignedUserOperation, abis::entry_point::PackedUserOperation};
 
 /// ERC-4337 0.7 & 0.8 UserOperation in unpacked JSON-RPC wire format.]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -76,14 +71,30 @@ pub struct UserOperation {
     #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub paymaster_data: Option<Bytes>,
 
-    #[serde(rename = "eip7702Auth", skip_serializing_if = "Option::is_none")]
-    pub authorization: Option<Authorization>,
+    #[serde(
+        rename = "eip7702Auth",
+        default,
+        skip_serializing_if = "Authorization::is_none"
+    )]
+    pub authorization: Authorization,
 
     #[cfg_attr(js, tsify(type = "`0x${string}`"))]
     pub signature: Bytes,
+}
 
-    pub entry_point: Address,
-    pub domain: Eip712Domain,
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Authorization {
+    #[default]
+    None,
+    SignedEip7702(alloy::eips::eip7702::SignedAuthorization),
+    Eip7702(alloy::eips::eip7702::Authorization),
+}
+
+impl Authorization {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Authorization::None)
+    }
 }
 
 /// A submitted user operation hash.
@@ -157,39 +168,6 @@ pub struct UserOperationReceipt {
 }
 
 impl UserOperation {
-    /// Computes the EIP-712 signing hash for this UserOperation
-    pub fn signing_hash(&self) -> B256 {
-        PackedUserOperation::from(self).eip712_signing_hash(&self.domain)
-    }
-
-    /// Signs the UserOperation with the provided signer
-    pub async fn sign(
-        self,
-        signer: &impl Signer,
-    ) -> Result<SignedUserOperation, alloy::signers::Error> {
-        let userop_sig = signer
-            .sign_hash(&self.signing_hash())
-            .await?
-            .as_bytes()
-            .into();
-
-        let authorization = if let Some(auth) = self.authorization.clone() {
-            let authorization_hash = auth.signature_hash();
-            let authorization_sig = signer.sign_hash(&authorization_hash).await?;
-            Some(auth.into_signed(authorization_sig))
-        } else {
-            None
-        };
-
-        let entry_point = self.entry_point;
-        Ok(SignedUserOperation {
-            user_op: self,
-            signature: userop_sig,
-            authorization,
-            entry_point,
-        })
-    }
-
     /// Returns the total gas estimate, including paymaster gas if applicable.
     pub fn total_gas_limit(&self) -> u128 {
         let mut total =
@@ -201,87 +179,5 @@ impl UserOperation {
             total += paymaster_post_op_gas_limit;
         }
         total
-    }
-}
-
-#[cfg(all(test, native))]
-mod tests {
-    use alloy::{
-        primitives::{address, b256},
-        signers::local::PrivateKeySigner,
-        sol_types::SolStruct,
-    };
-
-    use crate::entry_point::{ENTRY_POINT_08, entry_point_08_domain};
-
-    use super::*;
-
-    #[test]
-    fn test_pack() {
-        let op = test_user_operation();
-
-        let packed = PackedUserOperation::from(&op);
-        insta::assert_debug_snapshot!(packed);
-    }
-
-    #[test]
-    fn test_hash() {
-        let op = test_user_operation();
-
-        let packed = PackedUserOperation::from(&op);
-        let hash = packed.eip712_hash_struct();
-
-        // If you change the above UserOperation struct, the hash will change.
-        // You can check new hashes against the on-chain impl by running:
-        // `cast call 0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108 "getUserOpHash((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes))" "(...)" --rpc-url $RPC_URL`
-        println!("UserOperation tuple: {:?}", packed);
-
-        insta::assert_debug_snapshot!(hash);
-    }
-
-    #[tokio::test]
-    async fn test_sign() {
-        let op = test_user_operation();
-        let signer = PrivateKeySigner::from_bytes(&b256!(
-            "0x00000000000000000000000000000000000000000000000000000000DEADBEEF"
-        ))
-        .unwrap();
-
-        let signing_hash = op.signing_hash();
-        let signed = op.sign(&signer).await.unwrap();
-        let signature = signed.signature();
-        insta::assert_debug_snapshot!(signature);
-
-        let recovered = signature
-            .recover_address_from_prehash(&signing_hash)
-            .unwrap();
-        assert_eq!(
-            recovered,
-            signer.address(),
-            "Recovered address does not match signer address"
-        );
-    }
-
-    fn test_user_operation() -> UserOperation {
-        UserOperation {
-            sender: address!("0x000000000000000000000000000000000000DEAD"),
-            signature: Bytes::new(),
-            nonce: U256::from(42),
-            factory: Some(address!("0x000000000000000000000000000000000000BEEF")),
-            factory_data: Some(Bytes::from_static(b"factory data")),
-            call_data: Bytes::from_static(b"call data"),
-            call_gas_limit: 100_000,
-            verification_gas_limit: 50_000,
-            pre_verification_gas: 10_000,
-            max_fee_per_gas: 200,
-            max_priority_fee_per_gas: 50,
-            paymaster: Some(address!("0x000000000000000000000000000000000000FEED")),
-            paymaster_verification_gas_limit: Some(20_000),
-            paymaster_post_op_gas_limit: Some(30_000),
-            paymaster_data: Some(Bytes::from_static(b"paymaster data")),
-            authorization: None,
-            entry_point: ENTRY_POINT_08,
-            domain: entry_point_08_domain(1),
-        }
     }
 }

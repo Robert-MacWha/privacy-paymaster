@@ -6,8 +6,9 @@ use tracing::info;
 use crate::bundler::bundler::BundlerError;
 use crate::bundler::bundler::BundlerProvider;
 use crate::bundler::rpc_client::{RpcClient, RpcClientError};
+use crate::signable_user_operation::SignableUserOperation;
 use crate::signed_user_operation::SignedUserOperation;
-use crate::{UserOperation, UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
+use crate::{UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
 
 pub struct PimlicoBundler {
     client: RpcClient,
@@ -75,13 +76,16 @@ impl BundlerProvider for PimlicoBundler {
 
     async fn estimate_gas(
         &self,
-        op: &UserOperation,
+        op: &SignableUserOperation,
     ) -> Result<UserOperationGasEstimate, BundlerError> {
         info!("Requesting gas estimate from Pimlico...");
 
         Ok(self
             .client
-            .request("eth_estimateUserOperationGas", (op, op.entry_point))
+            .request(
+                "eth_estimateUserOperationGas",
+                (&op.user_op, op.entry_point),
+            )
             .await
             .map_err(|e| BundlerError::Other(Box::new(e)))?)
     }
@@ -93,7 +97,7 @@ impl BundlerProvider for PimlicoBundler {
         info!("Sending user operation to Pimlico...");
         let hash: B256 = self
             .client
-            .request("eth_sendUserOperation", (op, op.entry_point))
+            .request("eth_sendUserOperation", (&op.user_op, op.entry_point))
             .await
             .map_err(|e| BundlerError::Other(Box::new(e)))?;
 

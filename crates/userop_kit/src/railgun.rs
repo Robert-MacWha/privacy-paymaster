@@ -38,7 +38,8 @@ pub const PAYMASTER_VIEWING_PUBLIC_KEY: B256 =
 impl UserOperationBuilder<RailgunProtocol> {
     /// Create a new Railgun UserOperationBuilder with the given sender and fee transaction calldata.
     ///
-    /// Sets the paymaster and authorization fields appropriately for the Railgun protocol.
+    /// `auth_nonce` is the 7702 authorization nonce, which must match the EOA's current transaction
+    /// nonce when the authorization is consumed.
     ///
     /// `fee_calldata`` should be the `RailgunSmartWallet::transactCall::abi_encode((fee_transaction))` containing
     /// a single transaction that pays the fee.
@@ -49,7 +50,7 @@ impl UserOperationBuilder<RailgunProtocol> {
     pub fn new_railgun(
         chain_id: u64,
         sender: Address,
-        sender_nonce: u64,
+        auth_nonce: u64,
         fee_calldata: Bytes,
         random: B128,
         asset: Address,
@@ -58,7 +59,7 @@ impl UserOperationBuilder<RailgunProtocol> {
         let auth = Authorization {
             chain_id: U256::from(chain_id),
             address: IMPL,
-            nonce: sender_nonce,
+            nonce: auth_nonce,
         };
 
         let protocol = RailgunProtocol {

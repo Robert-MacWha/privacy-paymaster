@@ -1,6 +1,6 @@
 ---
-source: crates/userop_kit/src/user_operation.rs
-assertion_line: 217
+source: crates/userop_kit/src/signable_user_operation.rs
+assertion_line: 69
 expression: packed
 ---
 PackedUserOperation {

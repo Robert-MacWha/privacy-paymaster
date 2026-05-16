@@ -1,8 +1,8 @@
 use alloy::primitives::{Address, Bytes, U256};
-use alloy::rpc::types::Authorization;
 use alloy_sol_types::Eip712Domain;
 
 use crate::bundler::{BundlerError, BundlerProvider};
+use crate::signable_user_operation::SignableUserOperation;
 use crate::{UserOperation, UserOperationGasEstimate};
 
 pub struct UserOperationBuilder<P = ()> {
@@ -10,6 +10,8 @@ pub struct UserOperationBuilder<P = ()> {
     pub protocol: P,
 
     gas_set: bool,
+    entry_point: Address,
+    domain: Eip712Domain,
 }
 
 impl<P> UserOperationBuilder<P> {
@@ -36,58 +38,39 @@ impl<P> UserOperationBuilder<P> {
                 paymaster_post_op_gas_limit: None,
                 paymaster_data: None,
                 signature: Bytes::new(),
-                authorization: None,
-                entry_point,
-                domain,
+                authorization: Default::default(),
             },
+            entry_point,
+            domain,
             protocol,
             gas_set: false,
         }
     }
 
     pub fn with_calldata(mut self, calldata: Bytes) -> Self {
-        self.set_calldata(calldata);
-        self
-    }
-
-    pub fn set_calldata(&mut self, calldata: Bytes) {
         self.op.call_data = calldata;
+        self
     }
 
     pub fn with_paymaster(mut self, paymaster: Address) -> Self {
-        self.set_paymaster(paymaster);
-        self
-    }
-
-    pub fn set_paymaster(&mut self, paymaster: Address) {
         self.op.paymaster = Some(paymaster);
+        self
     }
 
     pub fn with_paymaster_data(mut self, data: Bytes) -> Self {
-        self.set_paymaster_data(data);
-        self
-    }
-
-    pub fn set_paymaster_data(&mut self, data: Bytes) {
         self.op.paymaster_data = Some(data);
+        self
     }
 
+    /// Sets the 4337 operation nonce for this UserOperation.
     pub fn with_nonce(mut self, nonce: U256) -> Self {
-        self.set_nonce(nonce);
-        self
-    }
-
-    pub fn set_nonce(&mut self, nonce: U256) {
         self.op.nonce = nonce;
-    }
-
-    pub fn with_authorization(mut self, auth: Authorization) -> Self {
-        self.set_authorization(auth);
         self
     }
 
-    pub fn set_authorization(&mut self, auth: Authorization) {
-        self.op.authorization = Some(auth);
+    pub fn with_authorization(mut self, auth: alloy::eips::eip7702::Authorization) -> Self {
+        self.op.authorization = crate::user_operation::Authorization::Eip7702(auth);
+        self
     }
 
     pub fn with_gas(
@@ -105,8 +88,9 @@ impl<P> UserOperationBuilder<P> {
         mut self,
         bundler: &dyn BundlerProvider,
     ) -> Result<Self, BundlerError> {
+        let op = self.build();
         let (est, max_fee, max_priority_fee) = futures::try_join!(
-            bundler.estimate_gas(&self.op),
+            bundler.estimate_gas(&op),
             bundler.suggest_max_fee_per_gas(),
             bundler.suggest_max_priority_fee_per_gas()
         )?;
@@ -115,7 +99,7 @@ impl<P> UserOperationBuilder<P> {
         Ok(self)
     }
 
-    pub fn set_gas(
+    fn set_gas(
         &mut self,
         gas: UserOperationGasEstimate,
         max_fee_per_gas: u128,
@@ -138,7 +122,11 @@ impl<P> UserOperationBuilder<P> {
         self
     }
 
-    pub fn build(self) -> UserOperation {
-        self.op
+    pub fn build(&self) -> SignableUserOperation {
+        SignableUserOperation {
+            user_op: self.op.clone(),
+            entry_point: self.entry_point,
+            domain: self.domain.clone(),
+        }
     }
 }
