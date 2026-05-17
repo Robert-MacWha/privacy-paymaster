@@ -4,9 +4,10 @@ use reqwest::Url;
 use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 
 use crate::{
-    SignedUserOperation, UserOperation, UserOperationGasEstimate, UserOperationHash,
-    UserOperationReceipt,
     bundler::{BundlerProvider, pimlico::PimlicoBundler},
+    signable_user_operation::SignableUserOperation,
+    signed_user_operation::SignedUserOperation,
+    user_operation::{UserOperationGasEstimate, UserOperationHash, UserOperationReceipt},
 };
 
 #[wasm_bindgen(js_name = "Bundler")]
@@ -55,7 +56,7 @@ impl JsBundler {
     #[wasm_bindgen(js_name = "estimateGas")]
     pub async fn estimate_gas(
         &self,
-        op: UserOperation,
+        op: SignableUserOperation,
     ) -> Result<UserOperationGasEstimate, JsError> {
         self.inner
             .estimate_gas(&op)

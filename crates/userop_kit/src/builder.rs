@@ -3,7 +3,7 @@ use alloy_sol_types::Eip712Domain;
 
 use crate::bundler::{BundlerError, BundlerProvider};
 use crate::signable_user_operation::SignableUserOperation;
-use crate::{UserOperation, UserOperationGasEstimate};
+use crate::{user_operation::UserOperation, user_operation::UserOperationGasEstimate};
 
 pub struct UserOperationBuilder<P = ()> {
     pub op: UserOperation,

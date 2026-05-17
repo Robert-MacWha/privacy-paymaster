@@ -1,8 +1,9 @@
 use thiserror::Error;
 
 use crate::{
-    UserOperationGasEstimate, UserOperationHash, UserOperationReceipt,
-    signable_user_operation::SignableUserOperation, signed_user_operation::SignedUserOperation,
+    signable_user_operation::SignableUserOperation,
+    signed_user_operation::SignedUserOperation,
+    user_operation::{UserOperationGasEstimate, UserOperationHash, UserOperationReceipt},
 };
 
 #[derive(Debug, Error)]

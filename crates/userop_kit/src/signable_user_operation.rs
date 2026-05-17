@@ -6,8 +6,8 @@ use alloy_sol_types::{Eip712Domain, SolStruct};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    SignedUserOperation, UserOperation, abis::entry_point::PackedUserOperation,
-    user_operation::Authorization,
+    abis::entry_point::PackedUserOperation, signed_user_operation::SignedUserOperation,
+    user_operation::Authorization, user_operation::UserOperation,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

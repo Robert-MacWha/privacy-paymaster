@@ -8,7 +8,9 @@ use crate::bundler::bundler::BundlerProvider;
 use crate::bundler::rpc_client::{RpcClient, RpcClientError};
 use crate::signable_user_operation::SignableUserOperation;
 use crate::signed_user_operation::SignedUserOperation;
-use crate::{UserOperationGasEstimate, UserOperationHash, UserOperationReceipt};
+use crate::user_operation::UserOperationGasEstimate;
+use crate::user_operation::UserOperationHash;
+use crate::user_operation::UserOperationReceipt;
 
 pub struct PimlicoBundler {
     client: RpcClient,

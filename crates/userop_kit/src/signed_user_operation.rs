@@ -1,7 +1,7 @@
 use alloy::primitives::Address;
 use serde::{Deserialize, Serialize};
 
-use crate::UserOperation;
+use crate::user_operation::UserOperation;
 
 /// A signed 4337 UserOperation with an optional signed 7702 Authorization,
 /// ready to be sent to the bundler.

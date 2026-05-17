@@ -4,7 +4,7 @@ use alloy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::UserOperation;
+use crate::user_operation::UserOperation;
 
 sol! {
     contract EntryPoint {
