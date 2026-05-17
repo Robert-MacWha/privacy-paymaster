@@ -1,0 +1,3 @@
+- Railgun
+  - [ ] Impl nullifier checking & block repeated nullifier to discourage griefing attacks
+  - [ ] Check bound params hash to prevent replay attacks on users

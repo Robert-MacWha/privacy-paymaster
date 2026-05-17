@@ -5,10 +5,6 @@
 
 .vscode
 
-# Added by cargo
-
-/target
-
 # Compiler files
 cache/
 out/
