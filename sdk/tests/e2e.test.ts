@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { Instance } from "prool";
 import { createWalletClient, getContract, http, parseAbi, publicActions, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
 import { BundlerClient } from "../src/bundlerClient";
+import { startServers } from "../src/bundler-server";
+import { deployPaymaster } from "../src/deploy-paymaster";
 import { TornadoBuilder } from "../src/tornadoBuilder";
-import { runForge, setPkBalances } from "./utils";
 import chain from "../../config/chains/sepolia.toml";
 import configFixtures from "../../test/fixtures/tornadocash/config.json";
 import shieldFixtures from "../../test/fixtures/tornadocash/shield.json";
@@ -25,10 +25,6 @@ const DEPLOYER_PK = configFixtures.deployerPrivateKey as Hex;
 const ALTO_EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
 const ALTO_UTILITY_PK = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
 
-// Test fixtures
-const STAKE_AMOUNT = "100000000000000000";
-const UNSTAKE_DELAY = "3600";
-const DEPOSIT_AMOUNT = "100000000000000000";
 
 // Assigned in `beforeAll`
 let execRpcUrl: string;
@@ -40,7 +36,14 @@ let paymasterAddr: Address = "0x00";
 let tornadoAccountAddr: Address = "0x00";
 
 beforeAll(async () => {
-    const servers = await startServers(SEPOLIA_RPC_URL);
+    const servers = await startServers({
+        forkUrl: SEPOLIA_RPC_URL,
+        forkBlockNumber: FORK_BLOCK_NUMBER,
+        entrypoint: chain.protocols.erc4337.entry_point,
+        executorPrivateKey: ALTO_EXECUTOR_PK,
+        utilityPrivateKey: ALTO_UTILITY_PK,
+        fundedPrivateKeys: [DEPLOYER_PK],
+    });
     stop = servers.stop;
     execRpcUrl = servers.execRpcUrl;
 
@@ -116,57 +119,13 @@ describe("tornado paymaster e2e", () => {
     }, 120_000);
 });
 
-async function startServers(rpcUrl: string): Promise<{
-    execRpcUrl: string;
-    bundlerRpcUrl: string;
-    stop: () => Promise<void>;
-}> {
-    const execServer = Instance.anvil({
-        forkUrl: rpcUrl,
-        forkBlockNumber: FORK_BLOCK_NUMBER,
-        chainId: anvil.id,
-    });
-    await execServer.start();
-    const executionRpcUrl = `http://localhost:${execServer.port}`;
-
-    await setPkBalances(executionRpcUrl, [DEPLOYER_PK, ALTO_EXECUTOR_PK, ALTO_UTILITY_PK]);
-
-    const bundlerServer = Instance.alto({
-        rpcUrl: executionRpcUrl,
-        entrypoints: [chain.protocols.erc4337.entry_point],
-        executorPrivateKeys: [ALTO_EXECUTOR_PK],
-        utilityPrivateKey: ALTO_UTILITY_PK,
-        safeMode: false,
-    });
-    await bundlerServer.start();
-    const bundlerRpcUrl = `http://localhost:${bundlerServer.port}`;
-
-    return {
-        execRpcUrl: executionRpcUrl,
-        bundlerRpcUrl,
-        stop: async () => {
-            await execServer.stop();
-            await bundlerServer.stop();
-        },
-    };
-}
-
 async function setupTornadocash(forkUrl: string) {
     console.log("Deploying Paymaster");
-    const deploymentsPath = "../config/deployments/anvil-test.json";
-
-    // Clear previous deployments
-    await Bun.write(deploymentsPath, "{}");
-
-    // Deploy
-    const env = { ...process.env, DEPLOY_ENV: "anvil-test", PRIVATE_KEY: DEPLOYER_PK };
-    await runForge(["script", "DeployPaymaster", "--fork-url", forkUrl, "--broadcast"], env);
-    await runForge(["script", "StakePaymaster", "--fork-url", forkUrl, "--broadcast"], { ...env, STAKE_AMOUNT, UNSTAKE_DELAY, DEPOSIT_AMOUNT });
-    await runForge(["script", "DeployTornado", "--fork-url", forkUrl, "--broadcast"], env);
-
-    // Load deployed addrs
-    const deployments = await Bun.file(deploymentsPath).json();
-    paymasterAddr = deployments.paymaster.address as Address;
-    tornadoAccountAddr = deployments.tornado.tornadoAccount as Address;
+    const { paymasterAddress, tornadoAccountAddress } = await deployPaymaster({
+        forkUrl,
+        privateKey: DEPLOYER_PK,
+    });
+    paymasterAddr = paymasterAddress;
+    tornadoAccountAddr = tornadoAccountAddress;
 }
 

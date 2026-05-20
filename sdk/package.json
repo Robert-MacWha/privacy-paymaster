@@ -8,19 +8,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./bundler-server": {
+      "types": "./dist/src/bundler-server.d.ts",
+      "import": "./dist/src/bundler-server.js"
+    },
+    "./deploy-paymaster": {
+      "types": "./dist/src/deploy-paymaster.d.ts",
+      "import": "./dist/src/deploy-paymaster.js"
     }
   },
   "files": [
     "dist"
   ],
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^25.8.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.0"
   },
   "scripts": {
-    "build": "bun build ./index.ts --outdir ./dist --target node --format esm --packages external && tsc -p tsconfig.build.json",
+    "build": "bun build ./index.ts ./src/bundler-server.ts ./src/deploy-paymaster.ts --outdir ./dist --target node --format esm --packages external && tsc -p tsconfig.build.json",
+    "serve-bundler": "bun scripts/start-bundler.ts",
+    "deploy": "bun scripts/deploy-paymaster.ts",
     "test": "bun test",
     "test:e2e": "bun test tests/e2e.test.ts"
   },

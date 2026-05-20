@@ -5,6 +5,9 @@ permissions:
 
 on:
   push:
+    branches:
+      - main
+      - 'release/*'
   pull_request:
   workflow_dispatch:
 
@@ -14,6 +17,7 @@ env:
 jobs:
   forge:
     name: Foundry project
+    environment: SOPS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -39,6 +43,7 @@ jobs:
 
   js-sdk:
     name: JavaScript SDK
+    environment: SOPS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -66,6 +71,7 @@ jobs:
 
   rust-sdk:
     name: Rust SDK
+    environment: SOPS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
