@@ -77,6 +77,8 @@ abstract contract BasePrivacyAccount is IAccount, IPrivacyAccount {
         }
     }
 
+    receive() external payable {}
+
     function _executeTailCalls(Call[] calldata tail) external {
         if (msg.sender != address(this)) revert OnlySelf();
 
