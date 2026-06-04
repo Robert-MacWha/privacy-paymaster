@@ -25,7 +25,7 @@ contract RailgunFeeAdapter is IFeeAdapter {
 
     // ----- ERRORS -----
     error MalformedAdapterData();
-    error AdaptParamsAreNotSender(bytes32 adaptParams, address sender);
+    error AdaptParamsAreNotSender(bytes32 adaptParams, bytes32 sender);
     error MissingFee(
         bytes32 master_public_key,
         bytes16 random,
@@ -97,10 +97,10 @@ contract RailgunFeeAdapter is IFeeAdapter {
         bool commitmentFound = false;
         for (uint256 i = 0; i < adapterData.transactions.length; i++) {
             Transaction memory t = adapterData.transactions[i];
-            if (t.boundParams.adaptParams != bytes32(bytes20(sender)))
+            if (t.boundParams.adaptParams != bytes32(uint256(uint160(sender))))
                 revert AdaptParamsAreNotSender(
                     t.boundParams.adaptParams,
-                    sender
+                    bytes32(uint256(uint160(sender)))
                 );
 
             for (uint256 j = 0; j < t.commitments.length; j++) {
