@@ -4,9 +4,6 @@ pragma solidity ^0.8.28;
 import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {
-    UserOperationLib
-} from "@account-abstraction/contracts/core/UserOperationLib.sol";
 
 import {PaymasterLib} from "../../libraries/PaymasterLib.sol";
 import {IFeeAdapter} from "../../interfaces/IFeeAdapter.sol";

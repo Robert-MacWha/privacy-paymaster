@@ -105,6 +105,7 @@ contract PrivacyPaymaster is BasePaymaster {
     ) external onlyOwner {
         address pool;
         if (allowed && token != address(0) && token != WETH) {
+            // aderyn-ignore-next-line reentrancy
             pool = FACTORY.getPool(token, WETH, uniswapFee);
             require(pool != address(0), "pool not supported");
         }
@@ -175,10 +176,11 @@ contract PrivacyPaymaster is BasePaymaster {
     function quoteWeiInToken(
         address feeToken,
         uint256 weiAmount
-    ) public view returns (uint256 tokenAmount) {
+    ) external view returns (uint256 tokenAmount) {
         if (feeToken == WETH) return weiAmount;
         if (feeToken == address(0)) return weiAmount; // Native ETH
 
+        // aderyn-ignore-next-line unchecked-arithmetic
         uint128 weiAmount128 = uint128(weiAmount);
 
         address pool = feeTokens[feeToken].pool;
