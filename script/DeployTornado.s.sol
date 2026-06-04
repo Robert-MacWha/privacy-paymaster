@@ -27,10 +27,21 @@ contract DeployTornado is Script {
         string[] memory pools = vm.parseTomlKeys(toml, ".protocols.tornado");
 
         for (uint256 i = 0; i < pools.length; i++) {
-            string memory tomlKey = string.concat("protocols.tornado.", pools[i]);
+            string memory tomlKey = string.concat(
+                "protocols.tornado.",
+                pools[i]
+            );
             address deployed = deploy(paymasterAddr, tomlKey, privateKey);
-            console.log("Deployed TornadoFeeAdapter (%s) at: %s", pools[i], deployed);
-            Deployments.writeAddress(string.concat("tornado_", pools[i]), "tornadoAdapter", deployed);
+            console.log(
+                "Deployed TornadoFeeAdapter (%s) at: %s",
+                pools[i],
+                deployed
+            );
+            Deployments.writeAddress(
+                string.concat("tornado_", pools[i]),
+                "tornadoAdapter",
+                deployed
+            );
         }
     }
 
@@ -56,10 +67,9 @@ contract DeployTornado is Script {
         address feeToken = adapter.FEE_TOKEN();
         (bool allowed, ) = paymaster.feeTokens(feeToken);
         if (feeToken != address(0) && !allowed) {
-            uint24 uniswapFee = uint24(Chains.readUint(
-                tornadoProtocolTomlKey,
-                "uniswap_fee"
-            ));
+            uint24 uniswapFee = uint24(
+                Chains.readUint(tornadoProtocolTomlKey, "uniswap_fee")
+            );
             vm.broadcast(privateKey);
             paymaster.setFeeToken(feeToken, uniswapFee, true);
 
@@ -67,9 +77,15 @@ contract DeployTornado is Script {
             uint32 twapPeriod = paymaster.twapPeriod();
             uint32 blockTime = uint32(Chains.readUint("block_time"));
             uint16 requiredCardinality = uint16(twapPeriod / blockTime) + 1;
-            address pool = paymaster.FACTORY().getPool(feeToken, paymaster.WETH(), uniswapFee);
+            address pool = paymaster.FACTORY().getPool(
+                feeToken,
+                paymaster.WETH(),
+                uniswapFee
+            );
             vm.broadcast(privateKey);
-            IUniswapV3Pool(pool).increaseObservationCardinalityNext(requiredCardinality);
+            IUniswapV3Pool(pool).increaseObservationCardinalityNext(
+                requiredCardinality
+            );
         }
 
         return address(adapter);
