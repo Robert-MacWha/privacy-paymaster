@@ -16,7 +16,7 @@ export interface DeployPaymasterOptions {
 
 export interface DeploymentResult {
     paymasterAddress: `0x${string}`;
-    tornadoAccountAddress: `0x${string}`;
+    tornadoAdapterAddress: `0x${string}`;
 }
 
 function findProjectRoot(startDir: string): string {
@@ -67,6 +67,6 @@ export async function deployPaymaster(options: DeployPaymasterOptions): Promise<
     const deployments = JSON.parse(await readFile(deploymentsPath, "utf-8"));
     return {
         paymasterAddress: deployments.paymaster.address as `0x${string}`,
-        tornadoAccountAddress: deployments.tornado_eth_1.tornadoAccount as `0x${string}`,
+        tornadoAdapterAddress: deployments.tornado_eth_1.tornadoAdapter as `0x${string}`,
     };
 }

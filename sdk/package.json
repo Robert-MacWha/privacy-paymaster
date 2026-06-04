@@ -40,8 +40,7 @@
     "viem": "2.48.4"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/node": "^25.8.0"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.9.0"

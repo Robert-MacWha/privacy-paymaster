@@ -5,7 +5,7 @@ import { anvil } from "viem/chains";
 import type { Address, Hex } from "viem";
 
 const DEFAULT_EXECUTOR_PK = "0x4a3a02862ddcb260ed52d40ef03f8e3d78fa3d174b0ef333afdf1ffb4a648cd5" as Hex;
-const DEFAULT_UTILITY_PK  = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
+const DEFAULT_UTILITY_PK = "0xdd4b2564c83ff7de602c39ffda1146055dc1814b07c083d7971722384f1f01a6" as Hex;
 
 export interface StartServersOptions {
     // Provide execRpcUrl to connect to an existing node, or forkUrl to spin up a local anvil fork.
