@@ -20,11 +20,9 @@ import {
 import {
     OracleLibrary
 } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import {
-    EIP7702Utils
-} from "@openzeppelin/contracts/account/utils/EIP7702Utils.sol";
 
-import {IPrivacyAccount} from "./interfaces/IPrivacyAccount.sol";
+import {PaymasterLib} from "./libraries/PaymasterLib.sol";
+import {IFeeAdapter} from "./interfaces/IFeeAdapter.sol";
 
 struct FeeToken {
     bool allowed;
@@ -33,25 +31,18 @@ struct FeeToken {
 
 /// Singleton multi-protocol privacy paymaster.
 ///
-/// A single staked paymaster that sponsors unshields from multiple
-/// privacy protocols. The paymaster enforces the following control flow:
-///   1. The paymaster is configured with a list of approved per-protocol
-///      7702 delegate implementations (e.g., `TornadoDelegate`, `RailgunDelegate`)
-///   2. Upon receiving a user operation, the paymaster checks that the sender's
-///     delegate impl is approved, that the calldata selector is `IPrivacyAccount.execute`,
-///     that the user's selected fee token is allowed, and that the quoted fee amount
-///     is sufficient to cover the operation's max cost.
+/// A single staked paymaster that can sponsor private transactions
+/// interacting with multiple privacy protocols. Transactions are paid
+/// for by the user's shielded funds, which are transferred to the paymaster's
+/// control in the validation phase.
 ///
-/// The paymaster relies on the per-protocol delegate implementations to estimate
-/// each operation's fee amount. This allows the paymaster to be agnostic to
-/// underlying privacy protocols.
+/// Protocol-specific logic is handled by adapter contracts that impl IFeeAdapter.
 contract PrivacyPaymaster is BasePaymaster {
     using SafeERC20 for IERC20;
 
     // ----- ERRORS -----
-    error SenderNotApproved(address sender);
+    error AdapterNotApproved(address adapter);
     error FeeTokenNotAllowed(address feeToken);
-    error InvalidSelector(bytes4 selector);
     error InsufficientFee(uint256 required, uint256 fee);
     error OracleFailure(bytes reason);
 
@@ -61,11 +52,11 @@ contract PrivacyPaymaster is BasePaymaster {
 
     // ----- STATE -----
     uint32 public twapPeriod;
-    mapping(address => bool) public approvedImpls;
+    mapping(address => bool) public approvedAdapters;
     mapping(address => FeeToken) public feeTokens;
 
     // ----- EVENTS -----
-    event ImplApproved(address indexed impl, bool approved);
+    event AdapterApproved(address indexed adapter, bool approved);
     event FeeTokenSet(address indexed token, bool allowed);
     event TwapPeriodSet(uint32 twapPeriod);
 
@@ -88,13 +79,13 @@ contract PrivacyPaymaster is BasePaymaster {
     receive() external payable {}
 
     // ----- ADMIN -----
-    function setApprovedImpl(
-        address impl,
+    function setApprovedAdapter(
+        address adapter,
         bool approved
         // aderyn-ignore-next-line(centralization-risk)
     ) external onlyOwner {
-        approvedImpls[impl] = approved;
-        emit ImplApproved(impl, approved);
+        approvedAdapters[adapter] = approved;
+        emit AdapterApproved(adapter, approved);
     }
 
     function setTwapPeriod(
@@ -143,27 +134,29 @@ contract PrivacyPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        address senderImpl = EIP7702Utils.fetchDelegate(userOp.sender);
-        if (!approvedImpls[senderImpl]) {
-            revert SenderNotApproved(userOp.sender);
+        (address adapter, ) = PaymasterLib.decodePaymasterAndData(
+            userOp.paymasterAndData
+        );
+        if (!approvedAdapters[adapter]) {
+            revert AdapterNotApproved(adapter);
         }
 
-        bytes memory feeCalldata = _decodeFeeCalldata(userOp.callData);
-
-        (address feeToken, uint256 feeAmount) = IPrivacyAccount(userOp.sender)
-            .previewFee(feeCalldata, userOp.paymasterAndData);
+        (address feeToken, uint256 feePaid) = IFeeAdapter(adapter).collectFee(
+            userOp
+        );
         if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }
 
-        try this.quoteWeiInToken(feeToken, maxCost) returns (uint256 requiredInToken) {
-            if (feeAmount < requiredInToken) {
-                revert InsufficientFee(requiredInToken, feeAmount);
+        try this.quoteWeiInToken(feeToken, maxCost) returns (
+            uint256 requiredInToken
+        ) {
+            if (feePaid < requiredInToken) {
+                revert InsufficientFee(requiredInToken, feePaid);
             }
         } catch (bytes memory reason) {
             revert OracleFailure(reason);
         }
-
         context = "";
         validationData = 0;
     }
@@ -186,20 +179,5 @@ contract PrivacyPaymaster is BasePaymaster {
                 WETH,
                 feeToken
             );
-    }
-
-    // ----- Internals -----
-    function _decodeFeeCalldata(
-        bytes calldata useropCalldata
-    ) internal pure returns (bytes memory feeCalldata) {
-        bool isValidSelector = bytes4(useropCalldata[:4]) ==
-            IPrivacyAccount.execute.selector;
-        if (!isValidSelector)
-            revert InvalidSelector(bytes4(useropCalldata[:4]));
-
-        (feeCalldata, ) = abi.decode(
-            useropCalldata[4:],
-            (bytes, IPrivacyAccount.Call[])
-        );
     }
 }

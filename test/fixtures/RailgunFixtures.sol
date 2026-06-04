@@ -17,7 +17,7 @@ import {
     UnshieldType,
     ShieldRequest,
     ShieldCiphertext
-} from "../../contracts/accounts/railgun/Globals.sol";
+} from "../../contracts/fee_adapters/railgun/Globals.sol";
 
 library RailgunFixtures {
     using stdJson for string;
@@ -25,10 +25,16 @@ library RailgunFixtures {
 
     uint256 internal constant FORK_BLOCK = 10100000;
 
-    function loadPaymasterAndData() internal view returns (bytes memory) {
-        string memory file = "test/fixtures/railgun/paymasterAndData.json";
-        string memory json = vm.readFile(file);
-        return vm.parseJsonBytes(json, ".paymasterAndData");
+    function loadRandom() internal pure returns (bytes16) {
+        return bytes16(0x1b82476ce9817694ef807ea954599948);
+    }
+
+    function loadAsset() internal pure returns (address) {
+        return 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
+    }
+
+    function loadValue() internal pure returns (uint120) {
+        return 2158605619427450;
     }
 
     function loadShield() internal view returns (ShieldRequest memory) {

@@ -6,14 +6,13 @@ import {console} from "forge-std/console.sol";
 import {Deployments} from "./lib/Deployments.sol";
 import {Chains} from "./lib/Chains.sol";
 
-import {
-    IEntryPoint
-} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
-import {RailgunAccount} from "../contracts/accounts/railgun/RailgunAccount.sol";
+import {
+    RailgunFeeAdapter
+} from "../contracts/fee_adapters/railgun/RailgunFeeAdapter.sol";
 import {
     IRailgunSmartWallet
-} from "../contracts/accounts/railgun/interfaces/IRailgunSmartWallet.sol";
+} from "../contracts/fee_adapters/railgun/interfaces/IRailgunSmartWallet.sol";
 
 contract DeployRailgun is Script {
     function run() external {
@@ -31,33 +30,31 @@ contract DeployRailgun is Script {
         address deployment = deploy(
             paymasterAddr,
             railgunSmartWalletAddr,
-            privateKey,
-            masterPublicKey
+            masterPublicKey,
+            privateKey
         );
-        console.log("Deployed RailgunAccount at:", deployment);
-        Deployments.writeAddress("railgun", "railgunAccount", deployment);
+        console.log("Deployed RailgunFeeAdapter at:", deployment);
+        Deployments.writeAddress("railgun", "railgunAdapter", deployment);
     }
 
     function deploy(
         address paymasterAddr,
         address railgunSmartWalletAddr,
-        uint256 privateKey,
-        bytes32 masterPublicKey
+        bytes32 masterPublicKey,
+        uint256 privateKey
     ) public returns (address) {
         PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
-        IEntryPoint entryPoint = paymaster.entryPoint();
         IRailgunSmartWallet railgunSmartWallet = IRailgunSmartWallet(
             railgunSmartWalletAddr
         );
 
         vm.broadcast(privateKey);
-        RailgunAccount railgunAccount = new RailgunAccount(
-            entryPoint,
+        RailgunFeeAdapter adapter = new RailgunFeeAdapter(
             railgunSmartWallet,
             masterPublicKey
         );
         vm.broadcast(privateKey);
-        paymaster.setApprovedImpl(address(railgunAccount), true);
-        return address(railgunAccount);
+        paymaster.setApprovedAdapter(address(adapter), true);
+        return address(adapter);
     }
 }

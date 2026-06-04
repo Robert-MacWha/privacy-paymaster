@@ -6,16 +6,13 @@ import {console} from "forge-std/console.sol";
 import {Deployments} from "./lib/Deployments.sol";
 import {Chains} from "./lib/Chains.sol";
 
-import {
-    IEntryPoint
-} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 import {
-    TornadoAccount
-} from "../contracts/accounts/tornadocash/TornadoAccount.sol";
+    TornadoFeeAdapter
+} from "../contracts/fee_adapters/tornadocash/TornadoFeeAdapter.sol";
 import {
     ITornadoInstance
-} from "../contracts/accounts/tornadocash/interfaces/ITornadoInstance.sol";
+} from "../contracts/fee_adapters/tornadocash/interfaces/ITornadoInstance.sol";
 import {
     IUniswapV3Pool
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -32,8 +29,8 @@ contract DeployTornado is Script {
         for (uint256 i = 0; i < pools.length; i++) {
             string memory tomlKey = string.concat("protocols.tornado.", pools[i]);
             address deployed = deploy(paymasterAddr, tomlKey, privateKey);
-            console.log("Deployed TornadoAccount (%s) at: %s", pools[i], deployed);
-            Deployments.writeAddress(string.concat("tornado_", pools[i]), "tornadoAccount", deployed);
+            console.log("Deployed TornadoFeeAdapter (%s) at: %s", pools[i], deployed);
+            Deployments.writeAddress(string.concat("tornado_", pools[i]), "tornadoAdapter", deployed);
         }
     }
 
@@ -43,7 +40,6 @@ contract DeployTornado is Script {
         uint256 privateKey
     ) public returns (address) {
         PrivacyPaymaster paymaster = PrivacyPaymaster(payable(paymasterAddr));
-        IEntryPoint entryPoint = paymaster.entryPoint();
         address tornadoInstanceAddr = Chains.readAddress(
             tornadoProtocolTomlKey,
             "instance"
@@ -53,14 +49,11 @@ contract DeployTornado is Script {
         );
 
         vm.broadcast(privateKey);
-        TornadoAccount tornadoAccount = new TornadoAccount(
-            entryPoint,
-            tornadoInstance
-        );
+        TornadoFeeAdapter adapter = new TornadoFeeAdapter(tornadoInstance);
         vm.broadcast(privateKey);
-        paymaster.setApprovedImpl(address(tornadoAccount), true);
+        paymaster.setApprovedAdapter(address(adapter), true);
 
-        address feeToken = tornadoAccount.FEE_TOKEN();
+        address feeToken = adapter.FEE_TOKEN();
         (bool allowed, ) = paymaster.feeTokens(feeToken);
         if (feeToken != address(0) && !allowed) {
             uint24 uniswapFee = uint24(Chains.readUint(
@@ -79,6 +72,6 @@ contract DeployTornado is Script {
             IUniswapV3Pool(pool).increaseObservationCardinalityNext(requiredCardinality);
         }
 
-        return address(tornadoAccount);
+        return address(adapter);
     }
 }
