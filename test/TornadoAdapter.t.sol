@@ -78,7 +78,7 @@ contract TornadoFeeAdapterForkTest is Test {
         address payable relayer
     ) internal view returns (PackedUserOperation memory op) {
         bytes memory adapterData = abi.encode(
-            TornadoFeeAdapter.TornadoWithdrawData({
+            TornadoFeeAdapter.AdapterData({
                 proof: TornadoFixtures.loadProof(),
                 root: TornadoFixtures.loadRoot(),
                 nullifierHash: TornadoFixtures.loadNullifierHash(),

@@ -21,8 +21,7 @@ import {
     IRailgunSmartWallet
 } from "../contracts/fee_adapters/railgun/interfaces/IRailgunSmartWallet.sol";
 import {
-    RailgunFeeAdapter,
-    RailgunFeeData
+    RailgunFeeAdapter
 } from "../contracts/fee_adapters/railgun/RailgunFeeAdapter.sol";
 import {
     Transaction,
@@ -87,12 +86,15 @@ contract RailgunFeeAdapterForkTest is Test {
     function _buildUserOp(
         Transaction memory t
     ) internal view returns (PackedUserOperation memory op) {
+        Transaction[] memory transactions = new Transaction[](1);
+        transactions[0] = t;
+
         bytes memory adapterData = abi.encode(
-            RailgunFeeData({
+            RailgunFeeAdapter.AdapterData({
                 random: RailgunFixtures.loadRandom(),
                 asset: RailgunFixtures.loadAsset(),
                 value: RailgunFixtures.loadValue(),
-                transaction: t
+                transactions: transactions
             })
         );
         bytes memory paymasterData = abi.encode(

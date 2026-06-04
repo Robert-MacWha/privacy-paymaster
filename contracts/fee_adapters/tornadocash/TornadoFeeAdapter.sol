@@ -13,7 +13,7 @@ import {IFeeAdapter} from "../../interfaces/IFeeAdapter.sol";
 import {ITornadoInstance} from "./interfaces/ITornadoInstance.sol";
 
 contract TornadoFeeAdapter is IFeeAdapter {
-    struct TornadoWithdrawData {
+    struct AdapterData {
         bytes proof;
         bytes32 root;
         bytes32 nullifierHash;
@@ -44,9 +44,9 @@ contract TornadoFeeAdapter is IFeeAdapter {
         PackedUserOperation calldata userOp
     ) external returns (address feeToken, uint256 feePaid) {
         address paymaster = msg.sender;
-        TornadoWithdrawData memory d;
+        AdapterData memory d;
         try this.decodeAdapterData(userOp.paymasterAndData) returns (
-            TornadoWithdrawData memory decoded
+            AdapterData memory decoded
         ) {
             d = decoded;
         } catch {
@@ -79,10 +79,10 @@ contract TornadoFeeAdapter is IFeeAdapter {
 
     function decodeAdapterData(
         bytes calldata paymasterAndData
-    ) external pure returns (TornadoWithdrawData memory) {
+    ) external pure returns (AdapterData memory) {
         PaymasterLib.PaymasterData memory pd = PaymasterLib
             .decodePaymasterAndData(paymasterAndData);
-        return abi.decode(pd.adapterData, (TornadoWithdrawData));
+        return abi.decode(pd.adapterData, (AdapterData));
     }
 
     /// ERC20Tornado exposes a `token()` getter, ETHTornado does not.
