@@ -134,16 +134,14 @@ contract PrivacyPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        (address adapter, ) = PaymasterLib.decodePaymasterAndData(
-            userOp.paymasterAndData
-        );
-        if (!approvedAdapters[adapter]) {
-            revert AdapterNotApproved(adapter);
+        PaymasterLib.PaymasterData memory data = PaymasterLib
+            .decodePaymasterAndData(userOp.paymasterAndData);
+        if (!approvedAdapters[data.adapter]) {
+            revert AdapterNotApproved(data.adapter);
         }
 
-        (address feeToken, uint256 feePaid) = IFeeAdapter(adapter).collectFee(
-            userOp
-        );
+        (address feeToken, uint256 feePaid) = IFeeAdapter(data.adapter)
+            .collectFee(userOp);
         if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }

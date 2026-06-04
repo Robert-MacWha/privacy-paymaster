@@ -43,11 +43,10 @@ contract TornadoFeeAdapter is IFeeAdapter {
         PackedUserOperation calldata userOp
     ) external returns (address feeToken, uint256 feePaid) {
         address paymaster = msg.sender;
-        (, bytes calldata adapterData) = PaymasterLib.decodePaymasterAndData(
-            userOp.paymasterAndData
-        );
+        PaymasterLib.PaymasterData memory paymasterData = PaymasterLib
+            .decodePaymasterAndData(userOp.paymasterAndData);
         TornadoWithdrawData memory d = abi.decode(
-            adapterData,
+            paymasterData.adapterData,
             (TornadoWithdrawData)
         );
 

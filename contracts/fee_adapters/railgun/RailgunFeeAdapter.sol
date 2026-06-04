@@ -51,10 +51,12 @@ contract RailgunFeeAdapter is IFeeAdapter {
     function collectFee(
         PackedUserOperation calldata userOp
     ) external returns (address feeToken, uint256 feePaid) {
-        (, bytes calldata adapterData) = PaymasterLib.decodePaymasterAndData(
-            userOp.paymasterAndData
+        PaymasterLib.PaymasterData memory paymasterData = PaymasterLib
+            .decodePaymasterAndData(userOp.paymasterAndData);
+        RailgunFeeData memory d = abi.decode(
+            paymasterData.adapterData,
+            (RailgunFeeData)
         );
-        RailgunFeeData memory d = abi.decode(adapterData, (RailgunFeeData));
 
         feeToken = d.asset;
         feePaid = d.value;

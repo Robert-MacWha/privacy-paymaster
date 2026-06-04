@@ -16,6 +16,7 @@ import {
     IUniswapV3Factory
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import {PaymasterLib} from "../contracts/libraries/PaymasterLib.sol";
 import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 import {IFeeAdapter} from "../contracts/interfaces/IFeeAdapter.sol";
 
@@ -59,12 +60,16 @@ contract PrivacyPaymasterTest is Test {
     function _buildUserOp(
         address _adapter
     ) internal view returns (PackedUserOperation memory op) {
+        bytes memory paymasterData = abi.encode(
+            PaymasterLib.PaymasterData({adapter: _adapter, adapterData: ""})
+        );
+
         op.sender = sender;
         op.paymasterAndData = abi.encodePacked(
             address(paymaster),
             uint128(100_000),
             uint128(50_000),
-            _adapter
+            paymasterData
         );
     }
 

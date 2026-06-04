@@ -14,6 +14,7 @@ import {
     IUniswapV3Factory
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import {PaymasterLib} from "../contracts/libraries/PaymasterLib.sol";
 import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 import {
     ITornadoInstance
@@ -87,13 +88,18 @@ contract TornadoFeeAdapterForkTest is Test {
                 refund: uint256(0)
             })
         );
+        bytes memory paymasterData = abi.encode(
+            PaymasterLib.PaymasterData({
+                adapter: address(adapter),
+                adapterData: adapterData
+            })
+        );
         op.sender = address(0x5EDE2);
         op.paymasterAndData = abi.encodePacked(
             address(paymaster),
             uint128(500_000),
             uint128(50_000),
-            address(adapter),
-            adapterData
+            paymasterData
         );
     }
 

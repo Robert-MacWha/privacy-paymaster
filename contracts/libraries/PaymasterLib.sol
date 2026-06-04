@@ -6,18 +6,20 @@ import {
 } from "@account-abstraction/contracts/core/UserOperationLib.sol";
 
 library PaymasterLib {
+    struct PaymasterData {
+        address adapter;
+        bytes adapterData;
+    }
+
     function decodePaymasterAndData(
         bytes calldata paymasterAndData
-    ) internal pure returns (address adapter, bytes calldata adapterData) {
+    ) internal pure returns (PaymasterData memory data) {
         uint256 paymasterAndDataOffset = UserOperationLib.PAYMASTER_DATA_OFFSET;
 
-        adapter = address(
-            bytes20(
-                paymasterAndData[
-                    paymasterAndDataOffset:paymasterAndDataOffset + 20
-                ]
-            )
+        data = abi.decode(
+            paymasterAndData[paymasterAndDataOffset:],
+            (PaymasterData)
         );
-        adapterData = paymasterAndData[paymasterAndDataOffset + 20:];
+        return data;
     }
 }

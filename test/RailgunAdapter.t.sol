@@ -15,6 +15,7 @@ import {
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {PaymasterLib} from "../contracts/libraries/PaymasterLib.sol";
 import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 import {
     IRailgunSmartWallet
@@ -94,13 +95,18 @@ contract RailgunFeeAdapterForkTest is Test {
                 transaction: t
             })
         );
+        bytes memory paymasterData = abi.encode(
+            PaymasterLib.PaymasterData({
+                adapter: address(adapter),
+                adapterData: adapterData
+            })
+        );
         op.sender = address(0); // matches fixture's adaptParams = bytes32(0)
         op.paymasterAndData = abi.encodePacked(
             address(paymaster),
             uint128(500_000),
             uint128(50_000),
-            address(adapter),
-            adapterData
+            paymasterData
         );
     }
 
