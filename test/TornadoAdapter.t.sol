@@ -133,6 +133,30 @@ contract TornadoFeeAdapterForkTest is Test {
         );
     }
 
+    function test_malformedAdapterData() public {
+        bytes memory paymasterData = abi.encode(
+            PaymasterLib.PaymasterData({
+                adapter: address(adapter),
+                adapterData: hex"deadbeef"
+            })
+        );
+        PackedUserOperation memory op;
+        op.sender = address(0x5EDE2);
+        op.paymasterAndData = abi.encodePacked(
+            address(paymaster),
+            uint128(500_000),
+            uint128(50_000),
+            paymasterData
+        );
+        vm.expectRevert(TornadoFeeAdapter.MalformedAdapterData.selector);
+        vm.prank(entryPointAddr);
+        paymaster.validatePaymasterUserOp(
+            op,
+            bytes32(0),
+            TornadoFixtures.loadFee()
+        );
+    }
+
     function test_callGasLimitNotZero() public {
         PackedUserOperation memory op = _buildUserOp(
             TornadoFixtures.loadRelayer()

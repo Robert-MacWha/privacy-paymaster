@@ -24,6 +24,7 @@ contract TornadoFeeAdapter is IFeeAdapter {
     }
 
     // ----- ERRORS -----
+    error MalformedAdapterData();
     error InvalidRelayer(address expected, address actual);
     error CallGasLimitNonZero(uint256 callGasLimit);
 
@@ -43,13 +44,14 @@ contract TornadoFeeAdapter is IFeeAdapter {
         PackedUserOperation calldata userOp
     ) external returns (address feeToken, uint256 feePaid) {
         address paymaster = msg.sender;
-        PaymasterLib.PaymasterData memory paymasterData = PaymasterLib
-            .decodePaymasterAndData(userOp.paymasterAndData);
-        TornadoWithdrawData memory d = abi.decode(
-            paymasterData.adapterData,
-            (TornadoWithdrawData)
-        );
-
+        TornadoWithdrawData memory d;
+        try this.decodeAdapterData(userOp.paymasterAndData) returns (
+            TornadoWithdrawData memory decoded
+        ) {
+            d = decoded;
+        } catch {
+            revert MalformedAdapterData();
+        }
         feeToken = FEE_TOKEN;
         feePaid = d.fee;
 
@@ -73,6 +75,14 @@ contract TornadoFeeAdapter is IFeeAdapter {
             d.fee,
             d.refund
         );
+    }
+
+    function decodeAdapterData(
+        bytes calldata paymasterAndData
+    ) external pure returns (TornadoWithdrawData memory) {
+        PaymasterLib.PaymasterData memory pd = PaymasterLib
+            .decodePaymasterAndData(paymasterAndData);
+        return abi.decode(pd.adapterData, (TornadoWithdrawData));
     }
 
     /// ERC20Tornado exposes a `token()` getter, ETHTornado does not.

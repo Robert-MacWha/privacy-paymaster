@@ -147,6 +147,30 @@ contract RailgunFeeAdapterForkTest is Test {
         );
     }
 
+    function test_malformedAdapterData() public {
+        bytes memory paymasterData = abi.encode(
+            PaymasterLib.PaymasterData({
+                adapter: address(adapter),
+                adapterData: hex"deadbeef"
+            })
+        );
+        PackedUserOperation memory op;
+        op.sender = address(0);
+        op.paymasterAndData = abi.encodePacked(
+            address(paymaster),
+            uint128(500_000),
+            uint128(50_000),
+            paymasterData
+        );
+        vm.expectRevert(RailgunFeeAdapter.MalformedAdapterData.selector);
+        vm.prank(entryPointAddr);
+        paymaster.validatePaymasterUserOp(
+            op,
+            bytes32(0),
+            uint256(RailgunFixtures.loadValue())
+        );
+    }
+
     function test_missingFee() public {
         Transaction memory t = RailgunFixtures.loadTransaction();
         for (uint256 i = 0; i < t.commitments.length; i++) {

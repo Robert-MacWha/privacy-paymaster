@@ -27,13 +27,14 @@ struct RailgunFeeData {
 
 contract RailgunFeeAdapter is IFeeAdapter {
     // ----- ERRORS -----
+    error MalformedAdapterData();
+    error AdaptParamsAreNotSender(bytes32 adaptParams, address sender);
     error MissingFee(
         bytes32 master_public_key,
         bytes16 random,
         address asset,
         uint120 value
     );
-    error AdaptParamsAreNotSender(bytes32 adaptParams, address sender);
 
     /// ----- IMMUTABLES -----
     IRailgunSmartWallet public immutable RAILGUN_SMART_WALLET;
@@ -51,13 +52,14 @@ contract RailgunFeeAdapter is IFeeAdapter {
     function collectFee(
         PackedUserOperation calldata userOp
     ) external returns (address feeToken, uint256 feePaid) {
-        PaymasterLib.PaymasterData memory paymasterData = PaymasterLib
-            .decodePaymasterAndData(userOp.paymasterAndData);
-        RailgunFeeData memory d = abi.decode(
-            paymasterData.adapterData,
-            (RailgunFeeData)
-        );
-
+        RailgunFeeData memory d;
+        try this.decodeAdapterData(userOp.paymasterAndData) returns (
+            RailgunFeeData memory decoded
+        ) {
+            d = decoded;
+        } catch {
+            revert MalformedAdapterData();
+        }
         feeToken = d.asset;
         feePaid = d.value;
 
@@ -92,6 +94,14 @@ contract RailgunFeeAdapter is IFeeAdapter {
         Transaction[] memory transactions = new Transaction[](1);
         transactions[0] = d.transaction;
         RAILGUN_SMART_WALLET.transact(transactions);
+    }
+
+    function decodeAdapterData(
+        bytes calldata paymasterAndData
+    ) external pure returns (RailgunFeeData memory) {
+        PaymasterLib.PaymasterData memory pd = PaymasterLib
+            .decodePaymasterAndData(paymasterAndData);
+        return abi.decode(pd.adapterData, (RailgunFeeData));
     }
 
     /// Calculate the commitment hash for the fee transfer based on the MPK, random, asset, and value.

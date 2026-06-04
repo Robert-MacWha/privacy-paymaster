@@ -223,6 +223,20 @@ contract PrivacyPaymasterTest is Test {
         assertEq(context, "");
         assertEq(validationData, 0);
     }
+
+    function test_validate_malformedPaymasterData() public {
+        PackedUserOperation memory op;
+        op.sender = sender;
+        op.paymasterAndData = abi.encodePacked(
+            address(paymaster),
+            uint128(100_000),
+            uint128(50_000),
+            bytes32(uint256(0xdead))
+        );
+        vm.prank(entryPointAddr);
+        vm.expectRevert(PrivacyPaymaster.MalformedPaymasterData.selector);
+        paymaster.validatePaymasterUserOp(op, bytes32(0), 0);
+    }
 }
 
 contract MockFeeAdapter is IFeeAdapter {

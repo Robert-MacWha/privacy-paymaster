@@ -41,6 +41,7 @@ contract PrivacyPaymaster is BasePaymaster {
     using SafeERC20 for IERC20;
 
     // ----- ERRORS -----
+    error MalformedPaymasterData();
     error AdapterNotApproved(address adapter);
     error FeeTokenNotAllowed(address feeToken);
     error InsufficientFee(uint256 required, uint256 fee);
@@ -134,8 +135,14 @@ contract PrivacyPaymaster is BasePaymaster {
         override
         returns (bytes memory context, uint256 validationData)
     {
-        PaymasterLib.PaymasterData memory data = PaymasterLib
-            .decodePaymasterAndData(userOp.paymasterAndData);
+        PaymasterLib.PaymasterData memory data;
+        try this.decodePaymasterData(userOp.paymasterAndData) returns (
+            PaymasterLib.PaymasterData memory decoded
+        ) {
+            data = decoded;
+        } catch {
+            revert MalformedPaymasterData();
+        }
         if (!approvedAdapters[data.adapter]) {
             revert AdapterNotApproved(data.adapter);
         }
@@ -157,6 +164,12 @@ contract PrivacyPaymaster is BasePaymaster {
         }
         context = "";
         validationData = 0;
+    }
+
+    function decodePaymasterData(
+        bytes calldata paymasterAndData
+    ) external pure returns (PaymasterLib.PaymasterData memory) {
+        return PaymasterLib.decodePaymasterAndData(paymasterAndData);
     }
 
     function quoteWeiInToken(
