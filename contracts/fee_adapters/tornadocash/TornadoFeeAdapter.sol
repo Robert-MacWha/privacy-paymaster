@@ -27,6 +27,7 @@ contract TornadoFeeAdapter is IFeeAdapter {
     error MalformedAdapterData();
     error InvalidRelayer(address expected, address actual);
     error CallGasLimitNonZero(uint256 callGasLimit);
+    error TornadoWithdrawalFailed(bytes reason);
 
     /// ----- IMMUTABLES -----
     ITornadoInstance public immutable TORNADO_INSTANCE;
@@ -66,15 +67,19 @@ contract TornadoFeeAdapter is IFeeAdapter {
         if (d.recipient != userOp.sender && callGasLimit != 0)
             revert CallGasLimitNonZero(callGasLimit);
 
-        TORNADO_INSTANCE.withdraw(
-            d.proof,
-            d.root,
-            d.nullifierHash,
-            d.recipient,
-            d.relayer,
-            d.fee,
-            d.refund
-        );
+        try
+            TORNADO_INSTANCE.withdraw(
+                d.proof,
+                d.root,
+                d.nullifierHash,
+                d.recipient,
+                d.relayer,
+                d.fee,
+                d.refund
+            )
+        {} catch (bytes memory reason) {
+            revert TornadoWithdrawalFailed(reason);
+        }
     }
 
     function decodeAdapterData(

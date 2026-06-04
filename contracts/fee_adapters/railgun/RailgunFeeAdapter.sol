@@ -32,6 +32,7 @@ contract RailgunFeeAdapter is IFeeAdapter {
         address asset,
         uint120 value
     );
+    error RailgunTransactionFailed(bytes reason);
 
     /// ----- IMMUTABLES -----
     IRailgunSmartWallet public immutable RAILGUN_SMART_WALLET;
@@ -61,7 +62,11 @@ contract RailgunFeeAdapter is IFeeAdapter {
         feePaid = d.value;
 
         _verifyTransactions(userOp.sender, d);
-        RAILGUN_SMART_WALLET.transact(d.transactions);
+        try RAILGUN_SMART_WALLET.transact(d.transactions) {} catch (
+            bytes memory reason
+        ) {
+            revert RailgunTransactionFailed(reason);
+        }
     }
 
     function decodeAdapterData(
