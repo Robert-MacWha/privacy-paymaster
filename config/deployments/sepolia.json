@@ -1,9 +1,9 @@
 {
   "paymaster": {
-    "address": "0xA0e2667AcdECb9bCDa6Fcf87638a962e2E9dB20D"
+    "address": "0xBb9D6507B5dE027dEb0196c83A7DC6Eef325bEe4"
   },
   "railgun": {
-    "railgunAccount": "0x304A1b31D6cC77616951579bD373A4bD8aeF4B4c"
+    "railgunAdapter": "0xeBabF510f824a349a9Be7F40cad3486B7249b1e0"
   },
   "tornado_eth_1": {
     "tornadoAccount": "0x191e3De3cF7f61de7EbEf4Bf45cfBA4f652d1C6e"
