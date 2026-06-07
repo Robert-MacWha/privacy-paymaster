@@ -1,5 +1,7 @@
 creation_rules:
   - path: secrets/secrets.yaml
+  # Robert: age1wrc3nndwc8vqg5fy4ks9xcldfnzd3wgkd9z6ak5edxa93cs4g4ysjxt0w5
+  # github/Robert-MacWha/privacy-paymaster SOPS_AGE_KEY: age1eaq3y8ydl4tt9vjtqpga3pf9q8v94a2wl05lqtqx50jjdq2qfuzs3d4h8p
     age: >-
       age1wrc3nndwc8vqg5fy4ks9xcldfnzd3wgkd9z6ak5edxa93cs4g4ysjxt0w5,
       age1eaq3y8ydl4tt9vjtqpga3pf9q8v94a2wl05lqtqx50jjdq2qfuzs3d4h8p
