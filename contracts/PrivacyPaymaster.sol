@@ -154,6 +154,9 @@ contract PrivacyPaymaster is BasePaymaster {
             revert FeeTokenNotAllowed(feeToken);
         }
 
+        context = "";
+        validationData = 0;
+
         try this.quoteWeiInToken(feeToken, maxCost) returns (
             uint256 requiredInToken
         ) {
@@ -163,8 +166,6 @@ contract PrivacyPaymaster is BasePaymaster {
         } catch (bytes memory reason) {
             revert OracleFailure(reason);
         }
-        context = "";
-        validationData = 0;
     }
 
     function decodePaymasterData(
