@@ -1,0 +1,8 @@
+{
+    "paymaster": {
+        "address": "0xE80e020Ca04150F9231788F375781445390D955D"
+    },
+    "railgun": {
+        "railgunAdapter": "0x93066BC5d841c3eC874B79e7bDc9Fc83ff52E733"
+    }
+}

@@ -1,17 +1,17 @@
 {
-  "paymaster": {
-    "address": "0xBb9D6507B5dE027dEb0196c83A7DC6Eef325bEe4"
-  },
-  "railgun": {
-    "railgunAdapter": "0xeBabF510f824a349a9Be7F40cad3486B7249b1e0"
-  },
-  "tornado_eth_1": {
-    "tornadoAccount": "0x191e3De3cF7f61de7EbEf4Bf45cfBA4f652d1C6e"
-  },
-  "tornado_eth_0_1": {
-    "tornadoAccount": "0x8A70E3dE493B8599447013f08d8b35719C8ED0ec"
-  },
-  "tornado_dai_100": {
-    "tornadoAccount": "0x060d053A6595630851ab873d6C95401b0C964d26"
-  }
+    "paymaster": {
+        "address": "0xBb9D6507B5dE027dEb0196c83A7DC6Eef325bEe4"
+    },
+    "railgun": {
+        "railgunAdapter": "0xeBabF510f824a349a9Be7F40cad3486B7249b1e0"
+    },
+    "tornado_eth_1": {
+        "tornadoAccount": "0x191e3De3cF7f61de7EbEf4Bf45cfBA4f652d1C6e"
+    },
+    "tornado_eth_0_1": {
+        "tornadoAccount": "0x8A70E3dE493B8599447013f08d8b35719C8ED0ec"
+    },
+    "tornado_dai_100": {
+        "tornadoAccount": "0x060d053A6595630851ab873d6C95401b0C964d26"
+    }
 }

@@ -17,6 +17,6 @@ forge script DeployPaymaster --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --v
 
 STAKE_AMOUNT=0 UNSTAKE_DELAY=0 DEPOSIT_AMOUNT=0 forge script StakePaymaster --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --verifier-api-key $ETHERSCAN_API_KEY --verify --broadcast
 
-forge script DeployTornado --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --verifier-api-key $ETHERSCAN_API_KEY --verify --broadcast
-forge script DeployRailgun --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --verifier-api-key $ETHERSCAN_API_KEY --verify --broadcast
+forge script DeployTornado --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --verify --broadcast
+forge script DeployRailgun --rpc-url $SEPOLIA_RPC_URL --verifier etherscan --verify --broadcast
 ```
