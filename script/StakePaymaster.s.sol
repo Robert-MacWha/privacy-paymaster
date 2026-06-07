@@ -13,9 +13,9 @@ import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
 contract StakePaymaster is Script {
     function run() external {
         address paymasterAddr = Deployments.readAddress("paymaster", "address");
-        uint256 stakeAmount = vm.envUint("STAKE_AMOUNT");
-        uint32 unstakeDelay = uint32(vm.envUint("UNSTAKE_DELAY"));
-        uint256 depositAmount = vm.envUint("DEPOSIT_AMOUNT");
+        uint256 stakeAmount = vm.envOr("STAKE_AMOUNT", uint256(0));
+        uint32 unstakeDelay = uint32(vm.envOr("UNSTAKE_DELAY", uint32(0)));
+        uint256 depositAmount = vm.envOr("DEPOSIT_AMOUNT", uint256(0));
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
         stake(
@@ -38,6 +38,7 @@ contract StakePaymaster is Script {
         IEntryPoint entryPoint = paymaster.entryPoint();
 
         if (stakeAmount > 0) {
+            require(unstakeDelay > 0, "Unstake delay must be greater than 0");
             vm.broadcast(privateKey);
             paymaster.addStake{value: stakeAmount}(unstakeDelay);
         }
