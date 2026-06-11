@@ -43,7 +43,10 @@ contract TornadoFeeAdapter is IFeeAdapter {
 
     function collectFee(
         PackedUserOperation calldata userOp
-    ) external returns (address feeToken, uint256 feePaid) {
+    )
+        external
+        returns (address feeToken, uint256 feePaid, address refundRecipient)
+    {
         address paymaster = msg.sender;
         AdapterData memory d;
         try this.decodeAdapterData(userOp.paymasterAndData) returns (
@@ -55,6 +58,7 @@ contract TornadoFeeAdapter is IFeeAdapter {
         }
         feeToken = FEE_TOKEN;
         feePaid = d.fee;
+        refundRecipient = d.recipient;
 
         if (d.relayer != paymaster) revert InvalidRelayer(paymaster, d.relayer);
 

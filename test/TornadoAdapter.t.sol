@@ -15,7 +15,10 @@ import {
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import {PaymasterLib} from "../contracts/libraries/PaymasterLib.sol";
-import {PrivacyPaymaster} from "../contracts/PrivacyPaymaster.sol";
+import {
+    PrivacyPaymaster,
+    PostOpContext
+} from "../contracts/PrivacyPaymaster.sol";
 import {
     ITornadoInstance
 } from "../contracts/fee_adapters/tornadocash/interfaces/ITornadoInstance.sol";
@@ -112,7 +115,14 @@ contract TornadoFeeAdapterForkTest is Test {
         vm.prank(entryPointAddr);
         (bytes memory context, uint256 validationData) = paymaster
             .validatePaymasterUserOp(op, bytes32(0), TornadoFixtures.loadFee());
-        assertEq(context, "");
+
+        PostOpContext memory ctx = abi.decode(context, (PostOpContext));
+        assertEq(ctx.feeToken, address(0));
+        assertEq(ctx.feePaid, TornadoFixtures.loadFee());
+        assertEq(ctx.refundRecipient, TornadoFixtures.loadRecipient());
+        assertEq(ctx.maxCost, TornadoFixtures.loadFee());
+        assertEq(ctx.maxCostInToken, TornadoFixtures.loadFee());
+
         assertEq(validationData, 0);
     }
 

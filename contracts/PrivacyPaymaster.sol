@@ -29,6 +29,14 @@ struct FeeToken {
     address pool;
 }
 
+struct PostOpContext {
+    address feeToken;
+    uint256 feePaid;
+    address refundRecipient;
+    uint256 maxCost;
+    uint256 maxCostInToken;
+}
+
 /// Singleton multi-protocol privacy paymaster.
 ///
 /// A single staked paymaster that can sponsor private transactions
@@ -46,6 +54,7 @@ contract PrivacyPaymaster is BasePaymaster {
     error FeeTokenNotAllowed(address feeToken);
     error InsufficientFee(uint256 required, uint256 fee);
     error OracleFailure(bytes reason);
+    error RefundFailed(address recipient, uint256 amount);
 
     // ----- IMMUTABLES -----
     IUniswapV3Factory public immutable FACTORY;
@@ -148,14 +157,14 @@ contract PrivacyPaymaster is BasePaymaster {
             revert AdapterNotApproved(data.adapter);
         }
 
-        (address feeToken, uint256 feePaid) = IFeeAdapter(data.adapter)
-            .collectFee(userOp);
+        (
+            address feeToken,
+            uint256 feePaid,
+            address refundRecipient
+        ) = IFeeAdapter(data.adapter).collectFee(userOp);
         if (!feeTokens[feeToken].allowed) {
             revert FeeTokenNotAllowed(feeToken);
         }
-
-        context = "";
-        validationData = 0;
 
         try this.quoteWeiInToken(feeToken, maxCost) returns (
             uint256 requiredInToken
@@ -163,8 +172,46 @@ contract PrivacyPaymaster is BasePaymaster {
             if (feePaid < requiredInToken) {
                 revert InsufficientFee(requiredInToken, feePaid);
             }
+
+            if (refundRecipient == address(0)) {
+                return ("", 0);
+            }
+
+            PostOpContext memory ctx = PostOpContext({
+                feeToken: feeToken,
+                feePaid: feePaid,
+                refundRecipient: refundRecipient,
+                maxCost: maxCost,
+                maxCostInToken: requiredInToken
+            });
+            context = abi.encode(ctx);
+            validationData = 0;
         } catch (bytes memory reason) {
             revert OracleFailure(reason);
+        }
+    }
+
+    function _postOp(
+        PostOpMode,
+        bytes calldata context,
+        uint256 actualGasCost,
+        uint256
+    ) internal virtual override {
+        if (context.length == 0) return;
+
+        PostOpContext memory ctx = abi.decode(context, (PostOpContext));
+        uint256 actualTokenCost = (actualGasCost * ctx.maxCostInToken) /
+            ctx.maxCost;
+        uint256 refund = ctx.feePaid > actualTokenCost
+            ? ctx.feePaid - actualTokenCost
+            : 0;
+
+        if (refund == 0) return;
+
+        try this._refund(ctx.feeToken, ctx.refundRecipient, refund) {
+            // refund successful
+        } catch {
+            revert RefundFailed(ctx.refundRecipient, refund);
         }
     }
 
@@ -193,5 +240,19 @@ contract PrivacyPaymaster is BasePaymaster {
                 WETH,
                 feeToken
             );
+    }
+
+    function _refund(
+        address feeToken,
+        address refundRecipient,
+        uint256 refund
+    ) external {
+        require(msg.sender == address(this));
+        if (feeToken == address(0)) {
+            (bool ok, ) = refundRecipient.call{value: refund}("");
+            require(ok);
+        } else {
+            IERC20(feeToken).safeTransfer(refundRecipient, refund);
+        }
     }
 }

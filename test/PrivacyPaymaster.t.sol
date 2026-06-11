@@ -242,6 +242,7 @@ contract PrivacyPaymasterTest is Test {
 contract MockFeeAdapter is IFeeAdapter {
     address feeToken = address(0);
     uint256 feeAmount = 1 ether;
+    address refundRecipient = address(0);
 
     function setFeeToken(address _token) external {
         feeToken = _token;
@@ -253,9 +254,14 @@ contract MockFeeAdapter is IFeeAdapter {
 
     function collectFee(
         PackedUserOperation calldata
-    ) external view returns (address _feeToken, uint256 _feePaid) {
+    )
+        external
+        view
+        returns (address _feeToken, uint256 _feePaid, address _refundRecipient)
+    {
         _feeToken = feeToken;
         _feePaid = feeAmount;
+        _refundRecipient = refundRecipient;
     }
     function test() public {}
 }

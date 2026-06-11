@@ -49,7 +49,10 @@ contract RailgunFeeAdapter is IFeeAdapter {
 
     function collectFee(
         PackedUserOperation calldata userOp
-    ) external returns (address feeToken, uint256 feePaid) {
+    )
+        external
+        returns (address feeToken, uint256 feePaid, address refundRecipient)
+    {
         AdapterData memory d;
         try this.decodeAdapterData(userOp.paymasterAndData) returns (
             AdapterData memory decoded
@@ -60,6 +63,8 @@ contract RailgunFeeAdapter is IFeeAdapter {
         }
         feeToken = d.asset;
         feePaid = d.value;
+        // TODO: Add an optional refund recipient in the AdapterData struct
+        refundRecipient = address(0);
 
         _verifyTransactions(userOp.sender, d);
         try RAILGUN_SMART_WALLET.transact(d.transactions) {} catch (
