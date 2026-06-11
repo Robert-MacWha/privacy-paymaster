@@ -54,7 +54,6 @@ contract PrivacyPaymaster is BasePaymaster {
     error FeeTokenNotAllowed(address feeToken);
     error InsufficientFee(uint256 required, uint256 fee);
     error OracleFailure(bytes reason);
-    error RefundFailed(address recipient, uint256 amount);
 
     // ----- IMMUTABLES -----
     IUniswapV3Factory public immutable FACTORY;
@@ -69,6 +68,11 @@ contract PrivacyPaymaster is BasePaymaster {
     event AdapterApproved(address indexed adapter, bool approved);
     event FeeTokenSet(address indexed token, bool allowed);
     event TwapPeriodSet(uint32 twapPeriod);
+    event RefundFailed(
+        address indexed recipient,
+        address indexed token,
+        uint256 amount
+    );
 
     // ----- CONSTRUCTOR -----
     constructor(
@@ -200,6 +204,8 @@ contract PrivacyPaymaster is BasePaymaster {
         if (context.length == 0) return;
 
         PostOpContext memory ctx = abi.decode(context, (PostOpContext));
+        if (ctx.maxCost == 0) return;
+
         uint256 actualTokenCost = (actualGasCost * ctx.maxCostInToken) /
             ctx.maxCost;
         uint256 refund = ctx.feePaid > actualTokenCost
@@ -211,7 +217,7 @@ contract PrivacyPaymaster is BasePaymaster {
         try this._refund(ctx.feeToken, ctx.refundRecipient, refund) {
             // refund successful
         } catch {
-            revert RefundFailed(ctx.refundRecipient, refund);
+            emit RefundFailed(ctx.refundRecipient, ctx.feeToken, refund);
         }
     }
 
