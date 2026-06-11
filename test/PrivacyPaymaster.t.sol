@@ -10,6 +10,9 @@ import {
 import {
     PackedUserOperation
 } from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {
+    IPaymaster
+} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
@@ -237,6 +240,88 @@ contract PrivacyPaymasterTest is Test {
         vm.expectRevert(PrivacyPaymaster.MalformedPaymasterData.selector);
         paymaster.validatePaymasterUserOp(op, bytes32(0), 0);
     }
+
+    // ----- _postOp refund -----
+
+    address internal recipient = address(0xECE1);
+
+    function _validateForContext(
+        uint256 maxCost
+    ) internal returns (bytes memory ctx) {
+        PackedUserOperation memory op = _buildUserOp(address(adapter));
+        vm.prank(entryPointAddr);
+        (ctx, ) = paymaster.validatePaymasterUserOp(op, bytes32(0), maxCost);
+    }
+
+    function test_validate_returnsContextWhenRefundRecipientSet() public {
+        adapter.setRefundRecipient(recipient);
+        bytes memory ctx = _validateForContext(0.5 ether);
+        assertGt(ctx.length, 0);
+    }
+
+    function test_postOp_refundsExcessEth() public {
+        adapter.setRefundRecipient(recipient);
+        vm.deal(address(paymaster), 1 ether);
+        bytes memory ctx = _validateForContext(0.5 ether);
+
+        vm.prank(entryPointAddr);
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, ctx, 0.2 ether, 0);
+
+        assertEq(recipient.balance, 0.8 ether);
+        assertEq(address(paymaster).balance, 0.2 ether);
+    }
+
+    function test_postOp_refundsExcessWeth() public {
+        adapter.setFeeToken(weth);
+        adapter.setRefundRecipient(recipient);
+        deal(weth, address(paymaster), 1 ether);
+        bytes memory ctx = _validateForContext(0.5 ether);
+
+        vm.prank(entryPointAddr);
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, ctx, 0.2 ether, 0);
+
+        assertEq(IERC20(weth).balanceOf(recipient), 0.8 ether);
+        assertEq(IERC20(weth).balanceOf(address(paymaster)), 0.2 ether);
+    }
+
+    function test_postOp_noRefundWhenCostEqualsFee() public {
+        adapter.setRefundRecipient(recipient);
+        vm.deal(address(paymaster), 1 ether);
+        bytes memory ctx = _validateForContext(1 ether);
+
+        vm.prank(entryPointAddr);
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, ctx, 1 ether, 0);
+
+        assertEq(recipient.balance, 0);
+        assertEq(address(paymaster).balance, 1 ether);
+    }
+
+    function test_postOp_emptyContextNoop() public {
+        vm.deal(address(paymaster), 1 ether);
+        vm.prank(entryPointAddr);
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, "", 1 ether, 0);
+        assertEq(address(paymaster).balance, 1 ether);
+    }
+
+    function test_postOp_refundFailureEmitsEvent() public {
+        RejectEther rejecter = new RejectEther();
+        adapter.setRefundRecipient(address(rejecter));
+        vm.deal(address(paymaster), 1 ether);
+        bytes memory ctx = _validateForContext(0.5 ether);
+
+        vm.expectEmit(true, true, false, true);
+        emit PrivacyPaymaster.RefundFailed(
+            address(rejecter),
+            address(0),
+            0.8 ether
+        );
+
+        vm.prank(entryPointAddr);
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, ctx, 0.2 ether, 0);
+
+        assertEq(address(rejecter).balance, 0);
+        assertEq(address(paymaster).balance, 1 ether);
+    }
 }
 
 contract MockFeeAdapter is IFeeAdapter {
@@ -250,6 +335,10 @@ contract MockFeeAdapter is IFeeAdapter {
 
     function setFeeAmount(uint256 _amount) external {
         feeAmount = _amount;
+    }
+
+    function setRefundRecipient(address _r) external {
+        refundRecipient = _r;
     }
 
     function collectFee(
@@ -293,6 +382,13 @@ contract MockERC20 is ERC20 {
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
+    }
+    function test() public {}
+}
+
+contract RejectEther {
+    receive() external payable {
+        revert("no");
     }
     function test() public {}
 }
