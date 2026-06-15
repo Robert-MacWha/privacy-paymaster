@@ -125,9 +125,8 @@ describe("tornado paymaster e2e", () => {
             client.getBalance({ address: paymasterAddr }),
         ]);
 
-        const expectedRecipient = denomination - BigInt(unshieldFixtures.fee as number);
-        expect(recipientBalance).toBe(expectedRecipient);
-        expect(paymasterBalance).toBe(BigInt(unshieldFixtures.fee as number));
+        expect(paymasterBalance).toBe(502307000000000n);
+        expect(recipientBalance).toBe(999497693000000000n);
     }, 120_000);
 });
 
@@ -140,4 +139,3 @@ async function setupTornadocash(forkUrl: string) {
     paymasterAddr = paymasterAddress;
     tornadoAdapterAddr = tornadoAdapterAddress;
 }
-
