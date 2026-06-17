@@ -15,19 +15,19 @@
       "import": "./dist/index.js"
     },
     "./bundler-server": {
-      "types": "./dist/src/bundler-server.d.ts",
-      "import": "./dist/src/bundler-server.js"
+      "types": "./dist/bundler-server.d.ts",
+      "import": "./dist/bundler-server.js"
     },
     "./deploy-paymaster": {
-      "types": "./dist/src/deploy-paymaster.d.ts",
-      "import": "./dist/src/deploy-paymaster.js"
+      "types": "./dist/deploy-paymaster.d.ts",
+      "import": "./dist/deploy-paymaster.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "bun build ./index.ts ./src/bundler-server.ts ./src/deploy-paymaster.ts --outdir ./dist --target node --format esm --packages external && tsc -p tsconfig.build.json",
+    "build": "bun build ./src/index.ts ./src/bundler-server.ts ./src/deploy-paymaster.ts --outdir ./dist --target node --format esm --packages external && tsc -p tsconfig.build.json",
     "serve-bundler": "bun scripts/start-bundler.ts",
     "deploy": "bun scripts/deploy-paymaster.ts",
     "test": "bun test",
