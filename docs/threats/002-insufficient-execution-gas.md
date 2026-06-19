@@ -1,7 +1,9 @@
 # Insufficient Execution Gas Griefing
 
 ## Status
-Active
+Obsolete
+
+Attack was elimiated by switching to evaluating the fee payment call in `validatePaymasterUserOp` instead of `executeUserOp`.
 
 ## Threat
 Paymasters receive their fee in two phases.  Firstly, in `validatePaymasterUserOp` the paymaster validates that the user operation includes a valid fee payment call (IE for railgun, that the transaction includes a shielded transfer to the paymaster's 0zaddress). Secondly, in `executeUserOp` the paymaster executes the fee-paying call. Given a valid fee payment call, `executeUserOp` can still revert if the user operation doesn't include enough gas for the `execution` phase. The paymaster would pay the cost of the failed transaction, but would not receive any fee.

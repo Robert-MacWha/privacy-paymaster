@@ -1,9 +1,19 @@
 # Cost
 
-Because the 4337 unshield flow involves double-validation of the proof (once in the paymaster, once in the privacy protocol) and has extra 4337 overhead, it is significantly more expensive than the regular unshield flow. In general it'll cost ~1.5-2x as much, depending on the protocol.
+Cost depends heavily on the protocol being used and whether fee refunds are possible.  In general, 4337 relaying will be at least 100k gas more expensive than a raw transaction due to entrypoint overhead.
 
-Important note: this only applies to single unshield operations. If the user adds any tail calls, those calls will be executed as-is and so won't contribute to excess costs.  For example - a tornadocash operation which unshields 5 notes would have a cost increase of only 1.1x because only the first unshield is double-validated. However, most everyday users likely won't see this benefit.
+### Tornadocash
 
-| Protocol     | Regular Unshield | 4337 Unshield (test_happyPath) | Cost Increase |
-| ------------ | ---------------- | ------------------------------ | ------------- |
-| Tornado Cash | 406k             | 703k                           | 1.7x          |
+- Regular unshield: ~400k gas
+- Native-relayed unshield: ~400k gas + ~0.1% fee
+- 4337-relayed unshield: ~500k gas
+
+*Tornadocash is currently the only protocol that supports fee refunds, which makes relayed unshields very cost-effective. Furthermore, tornadocash's native relayer network tend to charge very high fees.*
+
+### Railgun
+
+- Regular unshield (unshield + change note): ~1,200 gas
+- Waku-relayed unshield: ~1,200 gas + 100k gas fee + ~0.1% gas fee 
+- 4337-relayed unshield: ~1,800 gas
+
+*Railgun does not currently support fee refunds (cost of performing a shielded fee refund would be ~900k gas + operational complexity). This means the bundler & paymaster safety margins can't be refunded after a successful operation.*
