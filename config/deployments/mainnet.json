@@ -1,8 +1,53 @@
 {
   "paymaster": {
-    "address": "0x5FCd478c286528aE735e8CDAEF707956469ED208"
+    "address": "0xe06CB96C57D2442f8F60F5017354BC08F7e91308"
   },
   "railgun": {
-    "railgunAdapter": "0x0Aff8d142E3655714B716bBE1d66165a060D4155"
+    "railgunAdapter": "0xD73A1dE75B1D4A3aF1D9f664fBcFA327bD2Cd59d"
+  },
+  "tornado_eth_0_1": {
+    "tornadoAdapter": "0x4a3F73a23563bB467Aa034d0fAB61e7BcDf26161"
+  },
+  "tornado_eth_1": {
+    "tornadoAdapter": "0xC086b50Dd859Bb15D553327178DEdbC347B5b905"
+  },
+  "tornado_eth_10": {
+    "tornadoAdapter": "0x08d1103bff53CBdC9DB1e81B79475CEad2e35870"
+  },
+  "tornado_eth_100": {
+    "tornadoAdapter": "0x3aF851f9BeEeE6E9fa06022f34Dc4C453D265aE5"
+  },
+  "tornado_dai_100": {
+    "tornadoAdapter": "0xe6be288aeCa9FAB56D9792686Ec571Fb1AF37F55"
+  },
+  "tornado_dai_1000": {
+    "tornadoAdapter": "0xf6f35246EbDA061bB17b6C7ED7B7049065eD61f3"
+  },
+  "tornado_dai_10000": {
+    "tornadoAdapter": "0x36A5b4bCE77700B9C52cFEE53Fc8cA3B58eb7E35"
+  },
+  "tornado_dai_100000": {
+    "tornadoAdapter": "0x83Ff713F0939409E1c6023bc8aaB3E49eD968c8D"
+  },
+  "tornado_usdc_100": {
+    "tornadoAdapter": "0xB1C7e712AF153073979AdC5ef8B1Cc5A7b0cf031"
+  },
+  "tornado_usdc_1000": {
+    "tornadoAdapter": "0x44336242f9766b4c751F6958499C5cc18325e25B"
+  },
+  "tornado_usdt_100": {
+    "tornadoAdapter": "0xF006862cCa4829D3f3ddD52d93fC49C03D380a5F"
+  },
+  "tornado_usdt_1000": {
+    "tornadoAdapter": "0x5DF524b6c9303eD94A7767c2eD787ee223c9bC54"
+  },
+  "tornado_wbtc_0_1": {
+    "tornadoAdapter": "0x0fdF2f686B600523F9752aEca0abb6AD9603A22C"
+  },
+  "tornado_wbtc_1": {
+    "tornadoAdapter": "0xec3Cca694EEe55808B3f5EFEDd0bC03E52e47834"
+  },
+  "tornado_wbtc_10": {
+    "tornadoAdapter": "0xC2C427E6ADF66F412921C17958CeDD9C7710F521"
   }
 }
