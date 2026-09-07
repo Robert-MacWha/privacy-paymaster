@@ -8,6 +8,22 @@ entry_point = "0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108"
 factory = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 twap_period = 300
 
+# 0xbow privacy-pools-core pools (mainnet).
+
+# --- ETH (native, no fee token / uniswap_fee) ---
+[protocols.privacy_pools.simple_eth]
+instance = "0xF241d57C6DebAe225c0F2e6eA1529373C9A9C9fB"
+
+# --- USDT (6 decimals, uniswap_fee 100) ---
+[protocols.privacy_pools.complex_usdt_100]
+instance = "0xe859C0bD25f260BaEE534Fb52e307D3b64D24572"
+uniswap_fee = 100
+
+# --- USDC (6 decimals, uniswap_fee 100) ---
+[protocols.privacy_pools.complex_usdc_100]
+instance = "0xb419c2867aB3CBc78921660cB95150d95A94ce86"
+uniswap_fee = 100
+
 # Tornado Cash pools (mainnet). Fee tiers selected via
 # `sdk/scripts/explore-tornado-pools.ts` (lowest fee tier clearing a 50 WETH
 # liquidity floor on Uniswap V3 vs WETH).
