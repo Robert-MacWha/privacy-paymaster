@@ -49,5 +49,14 @@
   },
   "tornado_wbtc_10": {
     "tornadoAdapter": "0xC2C427E6ADF66F412921C17958CeDD9C7710F521"
+  },
+  "privacypools_simple_eth": {
+    "privacyPoolsAdapter": "0x0a230D83f16209E2692494a0ae139aAD8C96bde9"
+  },
+  "privacypools_complex_usdt_100": {
+    "privacyPoolsAdapter": "0xFcA5515D05f372Db8E03Bcc6b1a96BF4aC006f33"
+  },
+  "privacypools_complex_usdc_100": {
+    "privacyPoolsAdapter": "0x16B7d484c634985FbafaaaC6f3ee14e9eFDa4889"
   }
 }
