@@ -31,6 +31,7 @@ contract PrivacyPoolsFeeAdapter is IFeeAdapter {
         address recipient;
         address feeRecipient;
         uint256 fee;
+        address refundRecipient;
     }
 
     // ----- ERRORS -----
@@ -115,7 +116,11 @@ contract PrivacyPoolsFeeAdapter is IFeeAdapter {
 
         feeToken = _normalizeAsset(ASSET);
         feePaid = feeData.fee;
-        refundRecipient = feeData.recipient;
+        // The gas-overcharge refund (paid in postOp) is routed independently of
+        // `recipient`: in a batch/execution-phase withdrawal `recipient` is pinned
+        // to the userOp sender (anti-griefing above), so the refund target is carried
+        // separately to reach the real recipient. `address(0)` disables the refund.
+        refundRecipient = feeData.refundRecipient;
         return (feeToken, feePaid, refundRecipient);
     }
 
