@@ -117,7 +117,12 @@ contract PrivacyPoolsFeeAdapterTest is Test {
     ) internal view returns (PackedUserOperation memory op) {
         bytes memory feeData = _feeDataOverride.length == 0
             ? abi.encode(
-                PrivacyPoolsFeeAdapter.FeeData({recipient: _recipient, feeRecipient: _feeRecipient, fee: _fee})
+                PrivacyPoolsFeeAdapter.FeeData({
+                    recipient: _recipient,
+                    feeRecipient: _feeRecipient,
+                    fee: _fee,
+                    refundRecipient: _recipient
+                })
             )
             : _feeDataOverride;
 
@@ -202,6 +207,29 @@ contract PrivacyPoolsFeeAdapterTest is Test {
         (, uint256 feePaid,) = _collectFee(nativeAdapter, op);
         assertEq(feePaid, 0.1 ether);
         assertEq(SENDER.balance, 0.9 ether);
+    }
+
+    function test_valid_native_batchRefundRecipientDistinctFromSender() public {
+        // Batch/execution-phase shape: payout `recipient` is pinned to the sender
+        // (anti-griefing with non-zero callGasLimit), but the gas-overcharge refund
+        // is routed to the real recipient via `refundRecipient`.
+        vm.deal(address(nativePool), 1 ether);
+        bytes memory feeData = abi.encode(
+            PrivacyPoolsFeeAdapter.FeeData({
+                recipient: SENDER,
+                feeRecipient: PAYMASTER,
+                fee: 0.1 ether,
+                refundRecipient: RECIPIENT
+            })
+        );
+        PackedUserOperation memory op =
+            _buildUserOp(nativeAdapter, address(nativeAdapter), SENDER, PAYMASTER, 0.1 ether, 1 ether, 100, feeData);
+
+        (, uint256 feePaid, address refundRecipient) = _collectFee(nativeAdapter, op);
+
+        assertEq(feePaid, 0.1 ether);
+        assertEq(refundRecipient, RECIPIENT); // refund routed to the real recipient
+        assertEq(SENDER.balance, 0.9 ether); // payout still goes to the sender
     }
 
     // ----- collectFee: ERC20 pool -----
@@ -449,7 +477,12 @@ contract PrivacyPoolsPaymasterFlowTest is Test {
 
     function _buildUserOp(uint256 _fee, uint256 _withdrawnValue) internal view returns (PackedUserOperation memory op) {
         bytes memory feeData = abi.encode(
-            PrivacyPoolsFeeAdapter.FeeData({recipient: RECIPIENT, feeRecipient: address(paymaster), fee: _fee})
+            PrivacyPoolsFeeAdapter.FeeData({
+                recipient: RECIPIENT,
+                feeRecipient: address(paymaster),
+                fee: _fee,
+                refundRecipient: RECIPIENT
+            })
         );
         IPrivacyPool.Withdrawal memory withdrawal =
             IPrivacyPool.Withdrawal({processooor: address(adapter), data: feeData});
@@ -497,6 +530,45 @@ contract PrivacyPoolsPaymasterFlowTest is Test {
 
         // Recipient nets the withdrawal minus the actual gas cost.
         assertEq(RECIPIENT.balance, 0.95 ether);
+        assertEq(address(paymaster).balance, 0.05 ether);
+    }
+
+    function test_postOp_batch_refundsToRealRecipient() public {
+        // Batch shape end-to-end: payout goes to the sender during validation, the
+        // overcharge refund lands on the real recipient during postOp.
+        vm.deal(address(pool), 1 ether);
+        bytes memory feeData = abi.encode(
+            PrivacyPoolsFeeAdapter.FeeData({
+                recipient: SENDER,
+                feeRecipient: address(paymaster),
+                fee: 0.1 ether,
+                refundRecipient: RECIPIENT
+            })
+        );
+        IPrivacyPool.Withdrawal memory withdrawal =
+            IPrivacyPool.Withdrawal({processooor: address(adapter), data: feeData});
+        IPrivacyPool.WithdrawProof memory proof;
+        proof.pubSignals[2] = 1 ether;
+        bytes memory adapterData =
+            abi.encode(PrivacyPoolsFeeAdapter.AdapterData({withdrawal: withdrawal, proof: proof}));
+        bytes memory paymasterData =
+            abi.encode(PaymasterLib.PaymasterData({adapter: address(adapter), adapterData: adapterData}));
+
+        PackedUserOperation memory op;
+        op.sender = SENDER;
+        op.accountGasLimits = bytes32(uint256(100)); // non-zero callGasLimit (execution phase)
+        op.paymasterAndData = abi.encodePacked(address(paymaster), uint128(500_000), uint128(50_000), paymasterData);
+
+        vm.prank(address(entryPoint));
+        (bytes memory context,) = paymaster.validatePaymasterUserOp(op, bytes32(0), 0.1 ether);
+
+        vm.prank(address(entryPoint));
+        paymaster.postOp(IPaymaster.PostOpMode.opSucceeded, context, 0.05 ether, 0);
+
+        // Sender received the payout (withdrawal minus fee); the real recipient
+        // received the overcharge refund (fee minus actual gas cost).
+        assertEq(SENDER.balance, 0.9 ether);
+        assertEq(RECIPIENT.balance, 0.05 ether);
         assertEq(address(paymaster).balance, 0.05 ether);
     }
 
